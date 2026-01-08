@@ -7,7 +7,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from model.circuit import Circuit
 from model.components import Resistor, VoltageSourceDC, Capacitor
-from model.node import Node, Wire
+from model.node import Node
+from model.wire import Wire
 
 class TestCircuitModel(unittest.TestCase):
     

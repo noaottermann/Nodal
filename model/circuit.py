@@ -1,5 +1,6 @@
 import json
-from .node import Node, Wire
+from .node import Node
+from .wire import Wire
 from .dipole import Dipole
 class Circuit:
     """
