@@ -41,15 +41,15 @@ class MainWindow(QMainWindow):
         self.setup_menus()
         self.setup_toolbar()
 
-        # Barre de statut
+        # Status bar
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
         
-        # Zone principale
+        # Central widget
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         
-        # Layout temporaire
+        # Placeholder layout
         layout = QVBoxLayout(self.central_widget)
         self.canvas_label = QLabel("Canvas Placeholder")
         self.canvas_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -64,7 +64,7 @@ class MainWindow(QMainWindow):
                 action.setShortcut(shortcut)
             if slot:
                 action.triggered.connect(slot)
-            # On stocke l'action dans le dictionnaire avec sa clé de traduction comme ID
+            # The action is stored in the dictionary with its translation key as its ID
             self.custom_actions[key] = action
             return action
         
@@ -133,8 +133,8 @@ class MainWindow(QMainWindow):
         self.menu_simulation.setTitle(Translator.tr("menu_simulation"))
         self.menu_recent_files.setTitle(Translator.tr("menu_recent_files"))
 
-        # Mise à jour automatique de toutes les actions stockées
-        # Le dictionnaire self.custom_actions contient {"cle_traduction": ObjetQAction}
+        # Automatic update of all stored actions
+        # The self.custom_actions dictionary contains {“translation_key”: QActionObject}
         for key, action in self.custom_actions.items():
             action.setText(Translator.tr(key))
 
