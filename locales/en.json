@@ -15,5 +15,16 @@
     "action_export": "Export",
     "action_history": "History",
     "action_quit": "Quit",
+    "action_selection_all": "Select All",
+    "action_select_none": "Select None",
+    "action_select_invert": "Invert Selection",
+    "action_selection_filter": "Selection Filter",
+    "action_filter_nodes": "Filter Nodes",
+    "action_filter_wires": "Filter Wires",
+    "action_filter_sources": "Filter Sources",
+    "action_filter_resistors": "Filter Resistors",
+    "action_filter_capacitors": "Filter Capacitors",
+    "action_filter_inductors": "Filter Inductors",
+    "action_filter_add": "Add Filter",
     "status_ready": "Ready"
 }

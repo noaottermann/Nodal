@@ -79,6 +79,25 @@ class MainWindow(QMainWindow):
         make_action("action_history", None, self.on_version_history)
         make_action("action_quit", "Ctrl+Q", self.close)
 
+        # Edit Actions
+        make_action("action_select_all", "Ctrl+A", self.on_select_all)
+        make_action("action_select_none", "Ctrl+D", self.on_select_none)
+        make_action("action_select_invert", "Ctrl+I", self.on_select_invert)
+        make_action("action_filter_nodes", None, self.on_filter_nodes)
+        make_action("action_filter_wires", None, self.on_filter_wires)
+        make_action("action_filter_sources", None, self.on_filter_sources)
+        make_action("action_filter_resistors", None, self.on_filter_resistors)
+        make_action("action_filter_capacitors", None, self.on_filter_capacitors)
+        make_action("action_filter_inductors", None, self.on_filter_inductors)
+        make_action("action_filter_add", None, self.on_filter_add)
+
+        # View Actions
+
+        # Options Actions
+
+        # Simulation Actions
+
+
     def setup_menus(self):
         """Crée les menus de la fenêtre principale"""
         menubar = self.menuBar()
@@ -110,6 +129,28 @@ class MainWindow(QMainWindow):
         self.menu_file.addSeparator()
         self.menu_file.addAction(self.custom_actions["action_quit"])
 
+        # Edit Menu
+        self.menu_edit.addAction(self.custom_actions["action_select_all"])
+        self.menu_edit.addAction(self.custom_actions["action_select_none"])
+        self.menu_edit.addAction(self.custom_actions["action_select_invert"])
+        self.menu_selection_filter = self.menu_edit.addMenu('')
+        self.menu_selection_filter.addAction(self.custom_actions["action_filter_nodes"])
+        self.menu_selection_filter.addAction(self.custom_actions["action_filter_wires"])
+        self.menu_selection_filter.addAction(self.custom_actions["action_filter_sources"])
+        self.menu_selection_filter.addAction(self.custom_actions["action_filter_resistors"])
+        self.menu_selection_filter.addAction(self.custom_actions["action_filter_capacitors"])
+        self.menu_selection_filter.addAction(self.custom_actions["action_filter_inductors"])
+        self.menu_selection_filter.addAction(self.custom_actions["action_filter_capacitors"])
+        self.menu_selection_filter.addAction(self.custom_actions["action_filter_add"])
+        self.menu_file.addSeparator()
+
+        # View Menu
+
+        # Options Menu
+
+        # Simulation Menu
+
+
     def setup_toolbar(self):
         toolbar = QToolBar("Barre d'outils principale")
         self.addToolBar(toolbar)
@@ -131,10 +172,15 @@ class MainWindow(QMainWindow):
         self.menu_view.setTitle(Translator.tr("menu_view"))
         self.menu_options.setTitle(Translator.tr("menu_options"))
         self.menu_simulation.setTitle(Translator.tr("menu_simulation"))
+
+        # File Menu
         self.menu_recent_files.setTitle(Translator.tr("menu_recent_files"))
 
+        # Edit Menu
+        self.menu_selection_filter.setTitle(Translator.tr("menu_selection_filter"))
+
         # Mise à jour automatique de toutes les actions stockées
-        # Le dictionnaire self.custom_actions contient {"cle_traduction": ObjetQAction}
+        # Le dictionnaire self.custom_actions contient {"cle_traduction": QAction}
         for key, action in self.custom_actions.items():
             action.setText(Translator.tr(key))
 
@@ -171,3 +217,34 @@ class MainWindow(QMainWindow):
 
     def on_version_history(self):
         print("History")
+
+    def on_select_all(self):
+        print("Select All")
+
+    def on_select_none(self):
+        print("Select None")
+
+    def on_select_invert(self):
+        print("Invert Selection")
+
+    # TODO peut-être regrouper ces fonctions de filtre dans une seule avec un paramètre ?
+    def on_filter_nodes(self):
+        print("Filter Nodes")
+
+    def on_filter_wires(self):
+        print("Filter Wires")
+
+    def on_filter_sources(self):
+        print("Filter Sources")
+    
+    def on_filter_resistors(self):
+        print("Filter Resistors")
+
+    def on_filter_capacitors(self):
+        print("Filter Capacitors")
+
+    def on_filter_inductors(self):
+        print("Filter Inductors")
+
+    def on_filter_add(self):
+        print("Filter Add")

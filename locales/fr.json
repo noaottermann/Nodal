@@ -15,5 +15,16 @@
     "action_export": "Exporter",
     "action_history": "Historique",
     "action_quit": "Quitter",
+    "action_selection_all": "Tout sélectionner",
+    "action_select_none": "Tout désélectionner",
+    "action_select_invert": "Inverser la sélection",
+    "action_selection_filter": "Filtre de sélection",
+    "action_filter_nodes": "Filtrer les nœuds",
+    "action_filter_wires": "Filtrer les fils",
+    "action_filter_sources": "Filtrer les sources",
+    "action_filter_resistors": "Filtrer les résistances",
+    "action_filter_capacitors": "Filtrer les condensateurs",
+    "action_filter_inductors": "Filtrer les inducteurs",
+    "action_filter_add": "Ajouter un filtre",
     "status_ready": "Prêt"
 }
