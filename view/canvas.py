@@ -92,6 +92,35 @@ class CircuitScene(QGraphicsScene):
         x = round(pos.x() / self.GRID_SIZE) * self.GRID_SIZE
         y = round(pos.y() / self.GRID_SIZE) * self.GRID_SIZE
         return x, y
+    
+    def get_snapped_position(self, scene_pos):
+        """
+        Retourne les coordonnées (x, y) aimantées
+        Priorité 1 : Un noeud existant
+        Priorité 2 : La grille
+        """
+        # Seuil d'aimantation
+        THRESHOLD = 15.0
+        
+        mx, my = scene_pos.x(), scene_pos.y()
+        
+        closest_node_pos = None
+        min_dist = float('inf')
+
+        # Trouve le noeud le plus proche
+        for node in self.model.nodes.values():
+            nx, ny = node.position
+            # Calcul de distance
+            dist = ((mx - nx)**2 + (my - ny)**2)**0.5
+            if dist < min_dist:
+                min_dist = dist
+                closest_node_pos = (nx, ny)
+
+        if closest_node_pos and min_dist < THRESHOLD:
+            print(f"[Snap] Aimanté sur le noeud à {closest_node_pos}")
+            return closest_node_pos
+        
+        return self.snap_to_grid(scene_pos)
 
     def mousePressEvent(self, event):
         """Gère le clic souris selon l'outil sélectionné"""
@@ -99,7 +128,7 @@ class CircuitScene(QGraphicsScene):
         # Position exacte du clic
         scene_pos = event.scenePos()
         # Position avec quadrillage
-        grid_x, grid_y = self.snap_to_grid(scene_pos)
+        grid_x, grid_y = self.get_snapped_position(scene_pos)
 
         # Left click
         if event.button() == Qt.LeftButton:
@@ -122,7 +151,7 @@ class CircuitScene(QGraphicsScene):
 
         if self.current_tool == "wire" and self.drawing_wire and self.temp_wire_item:
             new_pos = event.scenePos()
-            grid_x, grid_y = self.snap_to_grid(new_pos)
+            grid_x, grid_y = self.get_snapped_position(new_pos)
             
             # Mise à jour visuelle de la ligne
             line = self.temp_wire_item.line()
@@ -136,7 +165,7 @@ class CircuitScene(QGraphicsScene):
             if self.current_tool == "wire" and self.drawing_wire:
                 # Fin du fil
                 scene_pos = event.scenePos()
-                grid_x, grid_y = self.snap_to_grid(scene_pos)
+                grid_x, grid_y = self.get_snapped_position(scene_pos)
                 self.finish_wire_drawing(grid_x, grid_y)
                 event.accept()
                 
