@@ -59,6 +59,7 @@ class CircuitScene(QGraphicsScene):
     def set_tool(self, tool_name):
         """Change l'outil actif"""
         self.current_tool = tool_name
+        print("Outil sélectionné :", tool_name)
 
     def drawBackground(self, painter, rect):
         """Dessine une grille de points pour aider à l'alignement"""
@@ -90,6 +91,7 @@ class CircuitScene(QGraphicsScene):
         grid_x, grid_y = self.snap_to_grid(scene_pos)
 
         # Left click
+        print("tool:", self.current_tool, "click at:", grid_x, grid_y)
         if event.button() == Qt.LeftButton:
             if self.current_tool == "pointer":
                 super().mousePressEvent(event)
@@ -97,7 +99,7 @@ class CircuitScene(QGraphicsScene):
                 # Logique fil
                 # TODO: implémenter la création de Node et Wire
                 super().mousePressEvent(event)
-            elif self.current_tool in ["resistor", "source_dc"]:
+            else:
                 self.add_component_at(self.current_tool, grid_x, grid_y)
         else:
             super().mousePressEvent(event)
@@ -109,18 +111,38 @@ class CircuitScene(QGraphicsScene):
         
         dipole = None
         d_id = self.model.get_next_dipole_id()
+        print("Adding component:", tool_type, "at", x, y)
 
         # 2. Création de l'objet Modèle
         if tool_type == "resistor":
             dipole = Resistor(d_id, node_a, node_b, x, y, name=f"R{d_id}")
         elif tool_type == "source_dc":
             dipole = VoltageSourceDC(d_id, node_a, node_b, x, y, name=f"V{d_id}")
+        elif tool_type == "source_ac":
+            dipole = VoltageSourceAC(d_id, node_a, node_b, x, y, name=f"V{d_id}")
+        elif tool_type == "capacitor":
+            dipole = Capacitor(d_id, node_a, node_b, x, y, name=f"C{d_id}")
+        elif tool_type == "inductor":
+            dipole = Inductor(d_id, node_a, node_b, x, y, name=f"L{d_id}")
 
         if dipole:
             self.model.add_dipole(dipole)
 
             item = create_component_item(dipole)
             self.addItem(item)
+
+    def delete_selection(self):
+        """Supprime tous les items sélectionnés"""
+        for item in self.selectedItems():
+            # Supprime du modèle
+            # On vérifie si l'item est un ComponentItem
+            if hasattr(item, 'component'):
+                dipole_id = item.component.id
+                # On supprime dans le dictionnaire du modèle
+                self.model.remove_dipole(dipole_id)
+            
+            # Supprime de la scène
+            self.removeItem(item)
 
     def refresh_from_model(self):
         """

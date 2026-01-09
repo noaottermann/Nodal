@@ -1,8 +1,8 @@
 import sys
 
-from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QAction, QToolBar, QStatusBar, QLabel, QMessageBox, QApplication)
+from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QAction, QToolBar, QStatusBar, QLabel, QMessageBox, QApplication, QShortcut
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QKeySequence
 from utils.translator import Translator
 from view.canvas import CircuitView, CircuitScene
 
@@ -39,6 +39,7 @@ class MainWindow(QMainWindow):
         
         # Setup
         self.create_actions()
+        self.create_shortcuts()
         self.setup_menus()
         self.setup_toolbar()
 
@@ -92,6 +93,29 @@ class MainWindow(QMainWindow):
         # Options Actions
 
         # Simulation Actions
+
+
+
+    def create_shortcuts(self):
+        """Définit les raccourcis clavier globaux"""
+        
+        # Delete key
+        self.shortcut_delete = QShortcut(QKeySequence("Del"), self)
+        self.shortcut_delete.activated.connect(self.delete_selected_items)
+        
+        # Test keys
+        self.shortcut_tool_pointer = QShortcut(QKeySequence("V"), self)
+        self.shortcut_tool_pointer.activated.connect(lambda: self.scene.set_tool("pointer"))
+        self.shortcut_tool_resistor = QShortcut(QKeySequence("R"), self)
+        self.shortcut_tool_resistor.activated.connect(lambda: self.scene.set_tool("resistor"))
+        self.shortcut_tool_source_dc = QShortcut(QKeySequence("D"), self)
+        self.shortcut_tool_source_dc.activated.connect(lambda: self.scene.set_tool("source_dc"))
+        self.shortcut_tool_source_ac = QShortcut(QKeySequence("A"), self)
+        self.shortcut_tool_source_ac.activated.connect(lambda: self.scene.set_tool("source_ac"))
+        self.shortcut_tool_capacitor = QShortcut(QKeySequence("C"), self)
+        self.shortcut_tool_capacitor.activated.connect(lambda: self.scene.set_tool("capacitor"))
+        self.shortcut_tool_inductor = QShortcut(QKeySequence("L"), self)
+        self.shortcut_tool_inductor.activated.connect(lambda: self.scene.set_tool("inductor"))
 
 
     def setup_menus(self):
@@ -244,3 +268,9 @@ class MainWindow(QMainWindow):
 
     def on_filter_add(self):
         print("Filter Add")
+
+    def delete_selected_items(self):
+        """Demande à la scène de supprimer ce qui est sélectionné"""
+        # On vérifie que la scène existe
+        if hasattr(self, 'scene'):
+            self.scene.delete_selection()

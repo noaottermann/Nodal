@@ -1,6 +1,6 @@
-from PyQt5.QtWidgets import QGraphicsItem, QStyleOptionGraphicsItem
+from PyQt5.QtWidgets import QGraphicsItem, QStyleOptionGraphicsItem, QStyle
 from PyQt5.QtCore import QRectF, Qt, QPointF
-from PyQt5.QtGui import QPainter, QPen, QColor, QFont
+from PyQt5.QtGui import QPainter, QPen, QColor, QFont, QPainterPath
 
 from model.components import Resistor, VoltageSourceDC, VoltageSourceAC, Capacitor, Inductor
 
@@ -52,7 +52,7 @@ class ComponentItem(QGraphicsItem):
         Dessine le cadre de sélection et appelle le dessin spécifique
         """
         painter.setRenderHint(QPainter.Antialiasing)
-        is_selected = option.state & QStyleOptionGraphicsItem.State_Selected
+        is_selected = option.state & QStyle.State_Selected
         if is_selected:
             pen = QPen(Qt.DashLine)
             pen.setColor(QColor("#0078d7"))
