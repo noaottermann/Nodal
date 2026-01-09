@@ -1,5 +1,5 @@
 import math
-from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene
+from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsLineItem
 from PyQt5.QtCore import Qt, QPointF, pyqtSignal, QRectF, QLineF
 from PyQt5.QtGui import QPainter, QPen, QColor, QTransform
 
@@ -7,6 +7,7 @@ from PyQt5.QtGui import QPainter, QPen, QColor, QTransform
 from model.components import Resistor, VoltageSourceDC, VoltageSourceAC, Capacitor, Inductor
 from model.node import Node
 from .component_item import create_component_item
+from .wire_item import WireItem
 
 class CircuitView(QGraphicsView):
     """
@@ -15,10 +16,20 @@ class CircuitView(QGraphicsView):
     def __init__(self, scene, parent=None):
         super().__init__(scene, parent)
         self.setRenderHint(QPainter.Antialiasing)
-        self.setDragMode(QGraphicsView.RubberBandDrag)
-        self.setViewportUpdateMode(QGraphicsView.FullViewportUpdate)
 
+        self.set_tool_mode("pointer")
+
+        self.setViewportUpdateMode(QGraphicsView.FullViewportUpdate)
         self.centerOn(0, 0)
+
+    def set_tool_mode(self, tool_name):
+        """Configure le comportement de la souris selon l'outil"""
+        if tool_name == "pointer":
+            # Clic gauche sélectionne, Clic-glissé fait un rectangle
+            self.setDragMode(QGraphicsView.RubberBandDrag)
+        else:
+            # Mode dessin
+            self.setDragMode(QGraphicsView.NoDrag)
 
     def wheelEvent(self, event):
         """Ctrl + Molette"""
@@ -50,16 +61,16 @@ class CircuitScene(QGraphicsScene):
         # TODO faire en sorte que la scène soit infinie ou semi-infinie
         self.setSceneRect(-2000, -2000, 4000, 4000)
         
-        self.current_tool = "resistor"
-        
+        self.current_tool = "pointer"
+
         # Variables temporaires pour dessiner des fils
+        self.drawing_wire = False
         self.temp_wire_line = None
         self.start_node = None
 
     def set_tool(self, tool_name):
         """Change l'outil actif"""
         self.current_tool = tool_name
-        print("Outil sélectionné :", tool_name)
 
     def drawBackground(self, painter, rect):
         """Dessine une grille de points pour aider à l'alignement"""
@@ -91,18 +102,48 @@ class CircuitScene(QGraphicsScene):
         grid_x, grid_y = self.snap_to_grid(scene_pos)
 
         # Left click
-        print("tool:", self.current_tool, "click at:", grid_x, grid_y)
         if event.button() == Qt.LeftButton:
             if self.current_tool == "pointer":
                 super().mousePressEvent(event)
             elif self.current_tool == "wire":
-                # Logique fil
-                # TODO: implémenter la création de Node et Wire
-                super().mousePressEvent(event)
+                self.start_wire_drawing(grid_x, grid_y)
+                event.accept()
             else:
                 self.add_component_at(self.current_tool, grid_x, grid_y)
+                event.accept()
+                if self.current_tool == "pointer":
+                    super().mousePressEvent(event)
         else:
             super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        """Gère le déplacement de la souris"""
+        super().mouseMoveEvent(event)
+
+        if self.current_tool == "wire" and self.drawing_wire and self.temp_wire_item:
+            new_pos = event.scenePos()
+            grid_x, grid_y = self.snap_to_grid(new_pos)
+            
+            # Mise à jour visuelle de la ligne
+            line = self.temp_wire_item.line()
+            line.setP2(QPointF(grid_x, grid_y))
+            self.temp_wire_item.setLine(line)
+
+    def mouseReleaseEvent(self, event):
+        """Action quand on lâche le clic gauche"""
+        if event.button() == Qt.LeftButton:
+            
+            if self.current_tool == "wire" and self.drawing_wire:
+                # Fin du fil
+                scene_pos = event.scenePos()
+                grid_x, grid_y = self.snap_to_grid(scene_pos)
+                self.finish_wire_drawing(grid_x, grid_y)
+                event.accept()
+                
+            else:
+                super().mouseReleaseEvent(event)
+        else:
+            super().mouseReleaseEvent(event)
 
     def add_component_at(self, tool_type, x, y):
         """Crée un composant"""
@@ -111,7 +152,6 @@ class CircuitScene(QGraphicsScene):
         
         dipole = None
         d_id = self.model.get_next_dipole_id()
-        print("Adding component:", tool_type, "at", x, y)
 
         # 2. Création de l'objet Modèle
         if tool_type == "resistor":
@@ -130,6 +170,60 @@ class CircuitScene(QGraphicsScene):
 
             item = create_component_item(dipole)
             self.addItem(item)
+
+    def start_wire_drawing(self, x, y):
+        """Initialise le mode dessin de fil"""
+        self.drawing_wire = True
+        self.start_pos = (x, y)
+        
+        # Création visuelle du fil temporaire
+        self.temp_wire_item = QGraphicsLineItem(x, y, x, y)
+        pen = QPen(Qt.gray, 2, Qt.DashLine)
+        self.temp_wire_item.setPen(pen)
+        self.addItem(self.temp_wire_item)
+
+    def finish_wire_drawing(self, x, y):
+        """Valide le fil et l'ajoute au modèle"""
+        
+        start_x, start_y = self.start_pos
+        
+        # Nettoyage du visuel temporaire
+        self.removeItem(self.temp_wire_item)
+        self.temp_wire_item = None
+        self.drawing_wire = False
+        
+        # On ne crée pas de fil de longueur nulle
+        if start_x == x and start_y == y:
+            return
+
+        # Modèle
+        # Trouver ou créer le Node de départ
+        node_a = self.model.get_node_at(start_x, start_y)
+        if not node_a:
+            node_a = self.model.create_node(start_x, start_y)
+            
+        # Trouver ou créer le Node d'arrivée
+        node_b = self.model.get_node_at(x, y)
+        if not node_b:
+            node_b = self.model.create_node(x, y)
+
+        # Créer le Wire dans le modèle
+        try:
+            wire = self.model.create_wire(node_a, node_b)
+            
+            # Créer le Wire visuel final
+            wire_item = WireItem(wire)
+            self.addItem(wire_item)
+            
+        except Exception as e:
+            print(f"[Erreur] Impossible de créer le fil : {e}")
+
+    def cancel_wire_drawing(self):
+        """Annule l'opération en cours"""
+        if self.temp_wire_item:
+            self.removeItem(self.temp_wire_item)
+            self.temp_wire_item = None
+        self.drawing_wire = False
 
     def delete_selection(self):
         """Supprime tous les items sélectionnés"""

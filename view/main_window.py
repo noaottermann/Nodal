@@ -105,17 +105,36 @@ class MainWindow(QMainWindow):
         
         # Test keys
         self.shortcut_tool_pointer = QShortcut(QKeySequence("V"), self)
-        self.shortcut_tool_pointer.activated.connect(lambda: self.scene.set_tool("pointer"))
+        self.shortcut_tool_pointer.activated.connect(lambda: self.set_tool("pointer"))
+        self.shortcut_tool_wire = QShortcut(QKeySequence("W"), self)
+        self.shortcut_tool_wire.activated.connect(lambda: self.set_tool("wire"))
         self.shortcut_tool_resistor = QShortcut(QKeySequence("R"), self)
-        self.shortcut_tool_resistor.activated.connect(lambda: self.scene.set_tool("resistor"))
+        self.shortcut_tool_resistor.activated.connect(lambda: self.set_tool("resistor"))
         self.shortcut_tool_source_dc = QShortcut(QKeySequence("D"), self)
-        self.shortcut_tool_source_dc.activated.connect(lambda: self.scene.set_tool("source_dc"))
+        self.shortcut_tool_source_dc.activated.connect(lambda: self.set_tool("source_dc"))
         self.shortcut_tool_source_ac = QShortcut(QKeySequence("A"), self)
-        self.shortcut_tool_source_ac.activated.connect(lambda: self.scene.set_tool("source_ac"))
+        self.shortcut_tool_source_ac.activated.connect(lambda: self.set_tool("source_ac"))
         self.shortcut_tool_capacitor = QShortcut(QKeySequence("C"), self)
-        self.shortcut_tool_capacitor.activated.connect(lambda: self.scene.set_tool("capacitor"))
+        self.shortcut_tool_capacitor.activated.connect(lambda: self.set_tool("capacitor"))
         self.shortcut_tool_inductor = QShortcut(QKeySequence("L"), self)
-        self.shortcut_tool_inductor.activated.connect(lambda: self.scene.set_tool("inductor"))
+        self.shortcut_tool_inductor.activated.connect(lambda: self.set_tool("inductor"))
+
+    def set_tool(self, tool_name):
+        """Change l'outil"""
+        
+        # Scène
+        if hasattr(self, 'scene'):
+            self.scene.set_tool(tool_name)
+            
+        # Vue
+        if hasattr(self, 'view'):
+            self.view.set_tool_mode(tool_name)
+            
+        # Change le curseur
+        if tool_name == "pointer":
+            self.setCursor(Qt.ArrowCursor)
+        else:
+            self.setCursor(Qt.CrossCursor)
 
 
     def setup_menus(self):
