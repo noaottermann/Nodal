@@ -133,7 +133,7 @@ class VoltageSourceItem(ComponentItem):
             painter.drawLine(-11, 0, -5, 0)
         elif isinstance(self.component, VoltageSourceAC):
             # Tilde (~)
-            path = QPainter.QPainterPath()
+            path = QPainterPath()
             path.moveTo(-7, 2)
             path.cubicTo(-2, -5, 2, 5, 7, -2)
             painter.drawPath(path)
