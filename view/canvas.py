@@ -50,7 +50,7 @@ class CircuitScene(QGraphicsScene):
         # TODO faire en sorte que la scène soit infinie ou semi-infinie
         self.setSceneRect(-2000, -2000, 4000, 4000)
         
-        self.current_tool = "pointer"
+        self.current_tool = "resistor"
         
         # Variables temporaires pour dessiner des fils
         self.temp_wire_line = None

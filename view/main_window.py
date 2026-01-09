@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QAc
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from utils.translator import Translator
+from view.canvas import CircuitView, CircuitScene
 
 class MainWindow(QMainWindow):
     """
@@ -42,19 +43,14 @@ class MainWindow(QMainWindow):
         self.setup_toolbar()
 
         # Status bar
+        
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
         
         # Central widget
-        self.central_widget = QWidget()
-        self.setCentralWidget(self.central_widget)
-        
-        # Placeholder layout
-        layout = QVBoxLayout(self.central_widget)
-        self.canvas_label = QLabel("Canvas Placeholder")
-        self.canvas_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.canvas_label.setStyleSheet("background-color: #f0f0f0; font-size: 20px; color: #888;")
-        layout.addWidget(self.canvas_label)
+        self.scene = CircuitScene(self.model)
+        self.view = CircuitView(self.scene)
+        self.setCentralWidget(self.view)
 
     def create_actions(self):
         """Crée toutes les actions de la fenêtre principale"""
