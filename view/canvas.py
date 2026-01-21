@@ -6,6 +6,7 @@ from PyQt5.QtGui import QPainter, QPen, QColor, QTransform
 # Import du modèle et des éléments graphiques
 from model.components import Resistor, VoltageSourceDC, VoltageSourceAC, Capacitor, Inductor
 from model.node import Node
+from view.grid import Grid
 from .component_item import create_component_item
 from .wire_item import WireItem
 
@@ -16,11 +17,19 @@ class CircuitView(QGraphicsView):
     def __init__(self, scene, parent=None):
         super().__init__(scene, parent)
         self.setRenderHint(QPainter.Antialiasing)
-
+        
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        
         self.set_tool_mode("pointer")
-
+        
         self.setViewportUpdateMode(QGraphicsView.FullViewportUpdate)
         self.centerOn(0, 0)
+        
+        # Variables pour le déplacement manuel
+        self._is_panning = False
+        self._pan_start_x = 0
+        self._pan_start_y = 0
 
     def set_tool_mode(self, tool_name):
         """Configure le comportement de la souris selon l'outil"""
@@ -46,6 +55,42 @@ class CircuitView(QGraphicsView):
             self.scale(zoom_factor, zoom_factor)
         else:
             super().wheelEvent(event)
+        
+    def mousePressEvent(self, event):
+        # Clic molette
+        if event.button() == Qt.MiddleButton:
+            self._is_panning = True
+            self._pan_start_x = event.x()
+            self._pan_start_y = event.y()
+            self.setCursor(Qt.ClosedHandCursor)
+            event.accept()
+        else:
+            super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.MiddleButton:
+            self._is_panning = False
+            # On remet le curseur normal
+            self.setCursor(Qt.ArrowCursor) 
+            event.accept()
+        else:
+            super().mouseReleaseEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self._is_panning:
+            # Calcul du déplacement de la souris
+            dx = event.x() - self._pan_start_x
+            dy = event.y() - self._pan_start_y
+            
+            self._pan_start_x = event.x()
+            self._pan_start_y = event.y()
+            
+            # On déplace les scrollbars invisibles pour fai
+            self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - dx)
+            self.verticalScrollBar().setValue(self.verticalScrollBar().value() - dy)
+            event.accept()
+        else:
+            super().mouseMoveEvent(event)
 
 class CircuitScene(QGraphicsScene):
     """
@@ -57,9 +102,11 @@ class CircuitScene(QGraphicsScene):
     def __init__(self, model):
         super().__init__()
         self.model = model
+  
+        limit = 1000000 
+        self.setSceneRect(-limit, -limit, limit * 2, limit * 2)
         
-        # TODO faire en sorte que la scène soit infinie ou semi-infinie
-        self.setSceneRect(-2000, -2000, 4000, 4000)
+        self.grid = Grid(grid_size=20)
         
         self.current_tool = "pointer"
 
