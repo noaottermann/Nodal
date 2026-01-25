@@ -40,19 +40,19 @@ class ComponentItem(QGraphicsItem):
         return QRectF(-self.width/2 - margin, -self.height/2 - margin, self.width + 2*margin, self.height + 2*margin)
 
     def itemChange(self, change, value):
-        """
-        Intercepte les changements d'état.
-        """
-        # Snapping lors du déplacement
         if change == QGraphicsItem.ItemPositionChange and self.scene():
             new_pos = value
-            # On arrondit à la grille
             grid_size = 20
             x = round(new_pos.x() / grid_size) * grid_size
             y = round(new_pos.y() / grid_size) * grid_size
+            snapped_pos = QPointF(x, y)
+
+            # Mise à jour immédiate des fils connectés
+            self.scene().update_wires_connected_to(self.component, snapped_pos, self.rotation())
             
-            # On retourne la position corrigée
-            return QPointF(x, y)
+            return snapped_pos
+
+        return super().itemChange(change, value)
 
         return super().itemChange(change, value)
 

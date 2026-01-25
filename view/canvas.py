@@ -313,6 +313,32 @@ class CircuitScene(QGraphicsScene):
         except Exception as e:
             print(f"[Erreur] Impossible de créer le fil : {e}")
 
+    def update_wires_connected_to(self, component_model, new_pos, rotation):
+        """
+        Met à jour visuellement les fils pendant le déplacement d'un composant.
+        """
+        
+        # Calcul des positions des noeuds
+        cx, cy = new_pos.x(), new_pos.y()
+        offset = 30
+        rad = math.radians(rotation)
+        dx = offset * math.cos(rad)
+        dy = offset * math.sin(rad)
+        
+        # On met à jour le modèle en temps réel
+        component_model.node_a.position = (cx - dx, cy - dy)
+        component_model.node_b.position = (cx + dx, cy + dy)
+        component_model.position = (cx, cy)
+
+        # On cherche les fils connectés et on les refresh
+        node_ids = {component_model.node_a.id, component_model.node_b.id}
+        
+        for item in self.items():
+            if isinstance(item, WireItem): 
+                wire = item.wire
+                if wire.node_a.id in node_ids or wire.node_b.id in node_ids:
+                    item.refresh_geometry()
+
     def cancel_wire_drawing(self):
         """Annule l'opération en cours"""
         if self.temp_wire_item:
