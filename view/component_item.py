@@ -43,14 +43,9 @@ class ComponentItem(QGraphicsItem):
         # Snapping
         if change == QGraphicsItem.ItemPositionChange and self.scene():
             new_pos = value
-            
-            # Taille de grille
             grid_size = self.scene().GRID_SIZE
-            
-            # Calcul du snapping
             x = round(new_pos.x() / grid_size) * grid_size
-            y = round(new_pos.y() / grid_size) * grid_size
-            
+            y = round(new_pos.y() / grid_size) * grid_size  
             return QPointF(x, y)
 
         # Gestion de la sélection

@@ -7,8 +7,8 @@ from PyQt5.QtGui import QPainter, QPen, QColor, QTransform
 from model.components import Resistor, VoltageSourceDC, VoltageSourceAC, Capacitor, Inductor
 from model.node import Node
 from view.grid import Grid
-from .component_item import create_component_item
-from .wire_item import WireItem
+from .component_item import ComponentItem, create_component_item
+from .wire_item import WireHandle, WireItem
 
 class CircuitView(QGraphicsView):
     """
@@ -114,6 +114,7 @@ class CircuitScene(QGraphicsScene):
         self.drawing_wire = False
         self.temp_wire_line = None
         self.start_node = None
+        self._group_move_active = False
 
     def set_tool(self, tool_name):
         """Change l'outil actif"""
@@ -170,12 +171,11 @@ class CircuitScene(QGraphicsScene):
         return self.snap_to_grid(scene_pos)
 
     def mousePressEvent(self, event):
-        """Gère le clic souris selon l'outil sélectionné"""
-        
-        # Position exacte du clic
         scene_pos = event.scenePos()
-        # Position avec quadrillage
         grid_x, grid_y = self.get_snapped_position(scene_pos)
+        
+        self._last_grid_pos = QPointF(grid_x, grid_y)
+        self._group_move_active = False
 
         # Left click
         if event.button() == Qt.LeftButton:
@@ -184,30 +184,65 @@ class CircuitScene(QGraphicsScene):
             elif self.current_tool == "wire":
                 self.start_wire_drawing(grid_x, grid_y)
                 event.accept()
-            else:
+            elif self.current_tool in ["resistor", "source_dc"]:
                 self.add_component_at(self.current_tool, grid_x, grid_y)
                 event.accept()
-                if self.current_tool == "pointer":
-                    super().mousePressEvent(event)
+            else:
+                super().mousePressEvent(event)
         else:
             super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
-        """Gère le déplacement de la souris"""
-        super().mouseMoveEvent(event)
-
+        # Fil fantôme
         if self.current_tool == "wire" and self.drawing_wire and self.temp_wire_item:
             new_pos = event.scenePos()
             grid_x, grid_y = self.get_snapped_position(new_pos)
-            
-            # Mise à jour visuelle de la ligne
             line = self.temp_wire_item.line()
             line.setP2(QPointF(grid_x, grid_y))
             self.temp_wire_item.setLine(line)
+            super().mouseMoveEvent(event)
+            return
+        
+        # Déplacement d'un groupe
+        if self.current_tool == "pointer" and self.selectedItems() and event.buttons() & Qt.LeftButton:
+            
+            # On ignore si on tire une poignée
+            grabber = self.mouseGrabberItem()
+            if isinstance(grabber, WireHandle):
+                super().mouseMoveEvent(event)
+                return
+            
+            current_grid_x, current_grid_y = self.get_snapped_position(event.scenePos())
+            current_grid_pos = QPointF(current_grid_x, current_grid_y)
+            grid_delta = current_grid_pos - self._last_grid_pos
+            
+            if grid_delta.manhattanLength() > 0:
+                self._group_move_active = True
+                # On déplace tous les objets sélectionnés de ce montant exact
+                for item in self.selectedItems():
+                    if isinstance(item, (ComponentItem, WireItem)):
+                        item.setPos(item.pos() + grid_delta)
+                
+                self._last_grid_pos = current_grid_pos
+            
+            event.accept()
+            
+        else:
+            super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
         """Action quand on lâche le clic gauche"""
         if event.button() == Qt.LeftButton:
+            if self.current_tool == "pointer" and self._group_move_active:
+                # Finalise un déplacement de groupe (modèle + snapping par item)
+                for item in self.selectedItems():
+                    if isinstance(item, ComponentItem):
+                        self.handle_component_move(item)
+                    elif isinstance(item, WireItem):
+                        self.handle_wire_move(item)
+                self._group_move_active = False
+                event.accept()
+                return
             
             if self.current_tool == "wire" and self.drawing_wire:
                 # Fin du fil

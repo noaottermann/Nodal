@@ -99,38 +99,32 @@ class WireItem(QGraphicsLineItem):
         self.setLine(QLineF(self.handle_a.pos(), self.handle_b.pos()))
 
     def itemChange(self, change, value):
-        # --- AJOUT : SNAPPING DU FIL ENTIER ---
+        # Snapping de position
         if change == QGraphicsItem.ItemPositionChange and self.scene():
-            # "value" est la nouvelle position proposée par la souris
             new_pos = value
-            
-            # On récupère la taille de grille
             grid_size = self.scene().GRID_SIZE
-            
-            # On arrondit à la grille
             x = round(new_pos.x() / grid_size) * grid_size
             y = round(new_pos.y() / grid_size) * grid_size
-            
-            # On renvoie la position corrigée. Qt utilisera celle-ci pour l'affichage.
             return QPointF(x, y)
-        # --------------------------------------
 
-        # Gestion de la sélection (Code existant à conserver en dessous)
+        # Gestion de la sélection
         if change == QGraphicsItem.ItemSelectedChange:
+            # On le fait proprement sans rappeler itemChange inutilement
             is_selected = bool(value)
-            self.handle_a.setVisible(is_selected)
-            self.handle_b.setVisible(is_selected)
-            
-            pen = self.pen()
-            if is_selected:
-                pen.setColor(QColor("#0078d7"))
-                pen.setStyle(Qt.DashLine)
-                self.setZValue(1) 
-            else:
-                pen.setColor(Qt.black)
-                pen.setStyle(Qt.SolidLine)
-                self.setZValue(0)
-            self.setPen(pen)
+            if self.handle_a.isVisible() != is_selected:
+                self.handle_a.setVisible(is_selected)
+                self.handle_b.setVisible(is_selected)
+                
+                pen = self.pen()
+                if is_selected:
+                    pen.setColor(QColor("#0078d7"))
+                    pen.setStyle(Qt.DashLine)
+                    self.setZValue(1) 
+                else:
+                    pen.setColor(Qt.black)
+                    pen.setStyle(Qt.SolidLine)
+                    self.setZValue(0)
+                self.setPen(pen)
 
         return super().itemChange(change, value)
 
