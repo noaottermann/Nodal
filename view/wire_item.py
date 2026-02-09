@@ -98,13 +98,32 @@ class WireItem(QGraphicsLineItem):
         """Met à jour juste le trait noir entre les carrés"""
         self.setLine(QLineF(self.handle_a.pos(), self.handle_b.pos()))
 
-    def apply_scene_delta(self, delta):
+    def _node_shared_with_dipole(self, node, model):
+        if node is None:
+            return False
+        for dipole in model.dipoles.values():
+            if dipole.node_a is node or dipole.node_b is node:
+                return True
+        return False
+
+    def apply_scene_delta(self, delta, detach_shared_nodes=False):
         """Déplace le fil via ses noeuds et applique le snapping par extrémité."""
         scene = self.scene()
         if scene is None:
             return
+        model = scene.model
+        if model is None:
+            return
         if not self.wire.node_a or not self.wire.node_b:
             return
+
+        if detach_shared_nodes:
+            if self._node_shared_with_dipole(self.wire.node_a, model):
+                ax, ay = self.wire.node_a.position
+                self.wire.node_a = model.create_node(ax, ay)
+            if self._node_shared_with_dipole(self.wire.node_b, model):
+                bx, by = self.wire.node_b.position
+                self.wire.node_b = model.create_node(bx, by)
 
         ax, ay = self.wire.node_a.position
         bx, by = self.wire.node_b.position

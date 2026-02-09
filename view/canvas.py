@@ -174,7 +174,9 @@ class CircuitScene(QGraphicsScene):
     def mousePressEvent(self, event):
         scene_pos = event.scenePos()
         grid_x, grid_y = self.get_snapped_position(scene_pos)
-        
+        if self.current_tool == "pointer":
+            grid_x, grid_y = self.snap_to_grid(scene_pos)
+
         self._last_grid_pos = QPointF(grid_x, grid_y)
         self._group_move_active = False
         self._drag_start_on_item = False
@@ -214,6 +216,12 @@ class CircuitScene(QGraphicsScene):
             if not self._drag_start_on_item:
                 super().mouseMoveEvent(event)
                 return
+
+            selected_component_nodes = set()
+            for selected_item in self.selectedItems():
+                if isinstance(selected_item, ComponentItem):
+                    selected_component_nodes.add(selected_item.component.node_a)
+                    selected_component_nodes.add(selected_item.component.node_b)
             
             # On ignore si on tire une poignée
             grabber = self.mouseGrabberItem()
@@ -221,7 +229,7 @@ class CircuitScene(QGraphicsScene):
                 super().mouseMoveEvent(event)
                 return
             
-            current_grid_x, current_grid_y = self.get_snapped_position(event.scenePos())
+            current_grid_x, current_grid_y = self.snap_to_grid(event.scenePos())
             current_grid_pos = QPointF(current_grid_x, current_grid_y)
             grid_delta = current_grid_pos - self._last_grid_pos
             
@@ -232,7 +240,11 @@ class CircuitScene(QGraphicsScene):
                     if isinstance(item, ComponentItem):
                         item.setPos(item.pos() + grid_delta)
                     elif isinstance(item, WireItem):
-                        item.apply_scene_delta(grid_delta)
+                        detach = True
+                        if selected_component_nodes:
+                            if item.wire.node_a in selected_component_nodes or item.wire.node_b in selected_component_nodes:
+                                detach = False
+                        item.apply_scene_delta(grid_delta, detach_shared_nodes=detach)
                 
                 self._last_grid_pos = current_grid_pos
             
