@@ -18,8 +18,8 @@ class TestDCSolver(unittest.TestCase):
 
     def test_simple_ohm_law(self):
         """
-        Source 10V + Résistance 5 Ohms
-        Attendu : I = U/R = 2A
+        10V source + 5 Ohm resistor.
+        Expect: I = U/R = 2A
         """
         n_gnd = self.circuit.create_node(0, 0, is_ground=True)
         n_pos = self.circuit.create_node(0, 100)
@@ -35,8 +35,8 @@ class TestDCSolver(unittest.TestCase):
 
     def test_voltage_divider(self):
         """
-        12V + 2 Résistances de 1kOhm en série
-        Attendu : 6V au point milieu
+        12V source + two 1k Ohm resistors in series.
+        Expect: 6V at the midpoint
         """
         # GND --(Src)-- N_Top --(R1)-- N_Mid --(R2)-- GND
         n_gnd = self.circuit.create_node(0, 0, is_ground=True)
@@ -57,12 +57,12 @@ class TestDCSolver(unittest.TestCase):
 
     def test_wire_handling(self):
         """
-        Vérifie que le solveur fusionne bien les noeuds reliés par un fil
-        Source 5V -- Fil -- Résistance 10 Ohm -- GND
+        Ensure the solver merges nodes connected by a wire.
+        5V source -- wire -- 10 Ohm resistor -- GND
         """
         n_gnd = self.circuit.create_node(0, 0, is_ground=True)
         n_src = self.circuit.create_node(0, 10)
-        n_res = self.circuit.create_node(10, 10) # Noeud physiquement distant mais relié par fil
+        n_res = self.circuit.create_node(10, 10)  # Distant node connected by wire
         src = VoltageSourceDC(self.circuit.get_next_dipole_id(), n_src, n_gnd, dc_voltage=5.0)
         self.circuit.add_dipole(src)
         self.circuit.create_wire(n_src, n_res)
@@ -76,9 +76,9 @@ class TestDCSolver(unittest.TestCase):
 
     def test_auto_ground_fallback(self):
         """
-        Si l'utilisateur oublie de mettre une masse
+        Auto-assign ground if the user forgets to set one.
         """
-        n1 = self.circuit.create_node(0, 0, is_ground=False) # Pas de masse explicite
+        n1 = self.circuit.create_node(0, 0, is_ground=False)  # No explicit ground
         n2 = self.circuit.create_node(10, 0, is_ground=False)
         src = VoltageSourceDC(self.circuit.get_next_dipole_id(), n1, n2, dc_voltage=10.0)
         self.circuit.add_dipole(src)
@@ -88,7 +88,7 @@ class TestDCSolver(unittest.TestCase):
         try:
             self.solver.solve(self.circuit)
         except Exception as e:
-            self.fail(f"Le solveur a planté sur un circuit flottant : {e}")
+            self.fail(f"Solver failed on a floating circuit: {e}")
             
         diff = abs(n1.potential - n2.potential)
         self.assertAlmostEqual(diff, 10.0, places=5)

@@ -1,0 +1,1 @@
+"""Solver utility helpers (placeholder)."""

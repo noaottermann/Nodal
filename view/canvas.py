@@ -1,19 +1,15 @@
 import math
 from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsLineItem
-from PyQt5.QtCore import Qt, QPointF, pyqtSignal, QRectF, QLineF
+from PyQt5.QtCore import Qt, QPointF
 from PyQt5.QtGui import QPainter, QPen, QColor, QTransform
 
-# Import du modèle et des éléments graphiques
+# Model and graphics items
 from model.components import Resistor, VoltageSourceDC, VoltageSourceAC, Capacitor, Inductor
-from model.node import Node
-from view.grid import Grid
 from .component_item import ComponentItem, create_component_item
 from .wire_item import WireHandle, WireItem
 
 class CircuitView(QGraphicsView):
-    """
-    Widget qui affiche la scène du circuit
-    """
+    """Graphics view that renders the circuit scene."""
     def __init__(self, scene, parent=None):
         super().__init__(scene, parent)
         self.setRenderHint(QPainter.Antialiasing)
@@ -26,27 +22,27 @@ class CircuitView(QGraphicsView):
         self.setViewportUpdateMode(QGraphicsView.FullViewportUpdate)
         self.centerOn(0, 0)
         
-        # Variables pour le déplacement manuel
+        # Manual panning state
         self._is_panning = False
         self._pan_start_x = 0
         self._pan_start_y = 0
 
     def set_tool_mode(self, tool_name):
-        """Configure le comportement de la souris selon l'outil"""
+        """Configure mouse behavior based on the active tool."""
         if tool_name == "pointer":
-            # Clic gauche sélectionne, Clic-glissé fait un rectangle
+            # Left click selects, drag draws a rubber band
             self.setDragMode(QGraphicsView.RubberBandDrag)
         else:
-            # Mode dessin
+            # Drawing mode
             self.setDragMode(QGraphicsView.NoDrag)
 
     def wheelEvent(self, event):
-        """Ctrl + Molette"""
+        """Ctrl + mouse wheel zooms the view."""
         if event.modifiers() & Qt.ControlModifier:
             zoom_in_factor = 1.25
             zoom_out_factor = 1 / zoom_in_factor
 
-            # Sens de la molette
+            # Wheel direction
             if event.angleDelta().y() > 0:
                 zoom_factor = zoom_in_factor
             else:
@@ -57,7 +53,7 @@ class CircuitView(QGraphicsView):
             super().wheelEvent(event)
         
     def mousePressEvent(self, event):
-        # Clic molette
+        # Middle click starts panning
         if event.button() == Qt.MiddleButton:
             self._is_panning = True
             self._pan_start_x = event.x()
@@ -70,7 +66,7 @@ class CircuitView(QGraphicsView):
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.MiddleButton:
             self._is_panning = False
-            # On remet le curseur normal
+            # Restore cursor
             self.setCursor(Qt.ArrowCursor) 
             event.accept()
         else:
@@ -78,14 +74,14 @@ class CircuitView(QGraphicsView):
 
     def mouseMoveEvent(self, event):
         if self._is_panning:
-            # Calcul du déplacement de la souris
+            # Calculate mouse delta
             dx = event.x() - self._pan_start_x
             dy = event.y() - self._pan_start_y
             
             self._pan_start_x = event.x()
             self._pan_start_y = event.y()
             
-            # On déplace les scrollbars invisibles pour fai
+            # Adjust hidden scrollbars
             self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - dx)
             self.verticalScrollBar().setValue(self.verticalScrollBar().value() - dy)
             event.accept()
@@ -93,9 +89,7 @@ class CircuitView(QGraphicsView):
             super().mouseMoveEvent(event)
 
 class CircuitScene(QGraphicsScene):
-    """
-    La scène qui contient tous les objets graphiques et gère la logique d'édition
-    """
+    """Scene that hosts items and handles editing logic."""
     # Grid settings
     GRID_SIZE = 20
 
@@ -106,26 +100,22 @@ class CircuitScene(QGraphicsScene):
         limit = 1000000 
         self.setSceneRect(-limit, -limit, limit * 2, limit * 2)
         
-        self.grid = Grid(grid_size=self.GRID_SIZE)
-        
         self.current_tool = "pointer"
 
-        # Variables temporaires pour dessiner des fils
+        # Temporary state for wire drawing
         self.drawing_wire = False
-        self.temp_wire_line = None
-        self.start_node = None
         self._group_move_active = False
         self._drag_start_on_item = False
 
     def set_tool(self, tool_name):
-        """Change l'outil actif"""
+        """Set the active tool name."""
         self.current_tool = tool_name
 
     def drawBackground(self, painter, rect):
-        """Dessine une grille de points pour aider à l'alignement"""
+        """Draw the background point grid for alignment."""
         painter.setPen(QPen(QColor(200, 200, 200), 1))
         
-        # On calcule les points visibles pour ne pas tout dessiner
+        # Only draw visible points
         left = int(rect.left()) - (int(rect.left()) % self.GRID_SIZE)
         top = int(rect.top()) - (int(rect.top()) % self.GRID_SIZE)
         
@@ -137,7 +127,7 @@ class CircuitScene(QGraphicsScene):
         painter.drawPoints(points)
 
     def snap_to_grid(self, pos):
-        """Arrondit une position x,y au point de grille le plus proche"""
+        """Round an (x, y) position to the nearest grid point."""
         gs = self.GRID_SIZE
         x = round(pos.x() / gs) * gs
         y = round(pos.y() / gs) * gs
@@ -145,11 +135,11 @@ class CircuitScene(QGraphicsScene):
     
     def get_snapped_position(self, scene_pos):
         """
-        Retourne les coordonnées (x, y) aimantées
-        Priorité 1 : Un noeud existant
-        Priorité 2 : La grille
+        Return snapped (x, y) coordinates.
+        Priority 1: existing node
+        Priority 2: grid
         """
-        # Seuil d'aimantation
+        # Snap threshold in scene units
         THRESHOLD = 15.0
         
         mx, my = scene_pos.x(), scene_pos.y()
@@ -157,10 +147,10 @@ class CircuitScene(QGraphicsScene):
         closest_node_pos = None
         min_dist = float('inf')
 
-        # Trouve le noeud le plus proche
+        # Find the closest node
         for node in self.model.nodes.values():
             nx, ny = node.position
-            # Calcul de distance
+            # Distance calculation
             dist = ((mx - nx)**2 + (my - ny)**2)**0.5
             if dist < min_dist:
                 min_dist = dist
@@ -184,7 +174,7 @@ class CircuitScene(QGraphicsScene):
         # Left click
         if event.button() == Qt.LeftButton:
             if self.current_tool == "pointer":
-                # Ne pas declencher un move de groupe si on demarre un rubberband
+                # Avoid group moves when starting a rubber-band selection
                 item = self.itemAt(scene_pos, QTransform())
                 if item is not None and not isinstance(item, WireHandle):
                     self._drag_start_on_item = True
@@ -201,7 +191,7 @@ class CircuitScene(QGraphicsScene):
             super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
-        # Fil fantôme
+        # Ghost wire
         if self.current_tool == "wire" and self.drawing_wire and self.temp_wire_item:
             new_pos = event.scenePos()
             grid_x, grid_y = self.get_snapped_position(new_pos)
@@ -211,7 +201,7 @@ class CircuitScene(QGraphicsScene):
             super().mouseMoveEvent(event)
             return
         
-        # Déplacement d'un groupe
+        # Group move
         if self.current_tool == "pointer" and self.selectedItems() and event.buttons() & Qt.LeftButton:
             if not self._drag_start_on_item:
                 super().mouseMoveEvent(event)
@@ -223,7 +213,7 @@ class CircuitScene(QGraphicsScene):
                     selected_component_nodes.add(selected_item.component.node_a)
                     selected_component_nodes.add(selected_item.component.node_b)
             
-            # On ignore si on tire une poignée
+            # Ignore drag when manipulating a wire handle
             grabber = self.mouseGrabberItem()
             if isinstance(grabber, WireHandle):
                 super().mouseMoveEvent(event)
@@ -235,7 +225,7 @@ class CircuitScene(QGraphicsScene):
             
             if grid_delta.manhattanLength() > 0:
                 self._group_move_active = True
-                # On déplace tous les objets sélectionnés de ce montant exact
+                # Move all selected items by the same delta
                 for item in self.selectedItems():
                     if isinstance(item, ComponentItem):
                         item.setPos(item.pos() + grid_delta)
@@ -254,10 +244,10 @@ class CircuitScene(QGraphicsScene):
             super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
-        """Action quand on lâche le clic gauche"""
+        """Handle left-click release actions."""
         if event.button() == Qt.LeftButton:
             if self.current_tool == "pointer" and self._group_move_active:
-                # Finalise un déplacement de groupe (modèle + snapping par item)
+                # Finalize group move (model update + per-item snapping)
                 for item in self.selectedItems():
                     if isinstance(item, ComponentItem):
                         self.handle_component_move(item)
@@ -268,7 +258,7 @@ class CircuitScene(QGraphicsScene):
                 return
             
             if self.current_tool == "wire" and self.drawing_wire:
-                # Fin du fil
+                # Finish wire
                 scene_pos = event.scenePos()
                 grid_x, grid_y = self.get_snapped_position(scene_pos)
                 self.finish_wire_drawing(grid_x, grid_y)
@@ -281,14 +271,14 @@ class CircuitScene(QGraphicsScene):
         self._drag_start_on_item = False
 
     def add_component_at(self, tool_type, x, y):
-        """Crée un composant"""
+        """Create a component at the given position."""
         node_a = self.model.create_node(x - 30, y)
         node_b = self.model.create_node(x + 30, y)
         
         dipole = None
         d_id = self.model.get_next_dipole_id()
 
-        # 2. Création de l'objet Modèle
+        # Model creation
         if tool_type == "resistor":
             dipole = Resistor(d_id, node_a, node_b, x, y, name=f"R{d_id}")
         elif tool_type == "source_dc":
@@ -308,65 +298,61 @@ class CircuitScene(QGraphicsScene):
 
     def handle_component_move(self, component_item):
         """
-        Appelé quand un composant a fini de bouger
+        Called after a component has finished moving.
         """
-        # Mise à jour des coordonnées des nodes
+        # Update node coordinates
         component_item.update_model_nodes()
         
-        # On récupère les IDs des noeuds de ce composant
+        # Collect node IDs for the moved component
         node_ids = {component_item.component.node_a.id, component_item.component.node_b.id}
         
-        # On cherche les fils connectés à ces noeuds pour les redessiner
+        # Refresh wires connected to those nodes
         for item in self.items():
-            # Si c'est un fil
-            if isinstance(item, WireItem): # Assurez-vous d'avoir importé WireItem
+            if isinstance(item, WireItem):
                 wire = item.wire
-                # Si le fil est connecté à l'un des noeuds du composant qui a bougé
                 if wire.node_a.id in node_ids or wire.node_b.id in node_ids:
-                    # On force le fil à recalculer sa géométrie
                     item.refresh_geometry()
 
     def start_wire_drawing(self, x, y):
-        """Initialise le mode dessin de fil"""
+        """Start interactive wire drawing."""
         self.drawing_wire = True
         self.start_pos = (x, y)
         
-        # Création visuelle du fil temporaire
+        # Temporary wire preview
         self.temp_wire_item = QGraphicsLineItem(x, y, x, y)
         pen = QPen(Qt.gray, 2, Qt.DashLine)
         self.temp_wire_item.setPen(pen)
         self.addItem(self.temp_wire_item)
 
     def finish_wire_drawing(self, x, y):
-        """Valide le fil et l'ajoute au modèle"""
+        """Finalize the wire and add it to the model."""
         
         start_x, start_y = self.start_pos
         
-        # Nettoyage du visuel temporaire
+        # Cleanup temporary preview
         self.removeItem(self.temp_wire_item)
         self.temp_wire_item = None
         self.drawing_wire = False
         
-        # On ne crée pas de fil de longueur nulle
+        # Do not create a zero-length wire
         if start_x == x and start_y == y:
             return
 
-        # Modèle
-        # Trouver ou créer le Node de départ
+        # Find or create the start node
         node_a = self.model.get_node_at(start_x, start_y)
         if not node_a:
             node_a = self.model.create_node(start_x, start_y)
             
-        # Trouver ou créer le Node d'arrivée
+        # Find or create the end node
         node_b = self.model.get_node_at(x, y)
         if not node_b:
             node_b = self.model.create_node(x, y)
 
-        # Créer le Wire dans le modèle
+        # Create wire in the model
         try:
             wire = self.model.create_wire(node_a, node_b)
             
-            # Créer le Wire visuel final
+            # Create the final wire item
             wire_item = WireItem(wire)
             self.addItem(wire_item)
             
@@ -375,22 +361,22 @@ class CircuitScene(QGraphicsScene):
 
     def update_wires_connected_to(self, component_model, new_pos, rotation):
         """
-        Met à jour visuellement les fils pendant le déplacement d'un composant.
+        Update connected wires while a component is moving.
         """
         
-        # Calcul des positions des noeuds
+        # Node positions from component center and rotation
         cx, cy = new_pos.x(), new_pos.y()
         offset = 30
         rad = math.radians(rotation)
         dx = offset * math.cos(rad)
         dy = offset * math.sin(rad)
         
-        # On met à jour le modèle en temps réel
+        # Update model in real time
         component_model.node_a.position = (cx - dx, cy - dy)
         component_model.node_b.position = (cx + dx, cy + dy)
         component_model.position = (cx, cy)
 
-        # On cherche les fils connectés et on les refresh
+        # Refresh connected wires
         node_ids = {component_model.node_a.id, component_model.node_b.id}
         
         for item in self.items():
@@ -400,7 +386,7 @@ class CircuitScene(QGraphicsScene):
                     item.refresh_geometry()
 
     def cancel_wire_drawing(self):
-        """Annule l'opération en cours"""
+        """Cancel the current wire drawing operation."""
         if self.temp_wire_item:
             self.removeItem(self.temp_wire_item)
             self.temp_wire_item = None
@@ -408,10 +394,10 @@ class CircuitScene(QGraphicsScene):
 
     def handle_wire_move(self, wire_item):
         """
-        Met à jour le modèle et reset le visuel
+        Update the model and reset the visuals after a wire move.
         """
         
-        # Calculer les vraies positions
+        # Compute absolute positions
         raw_pos_a = wire_item.handle_a.scenePos()
         raw_pos_b = wire_item.handle_b.scenePos()
 
@@ -419,46 +405,43 @@ class CircuitScene(QGraphicsScene):
         xa, ya = self.get_snapped_position(raw_pos_a)
         xb, yb = self.get_snapped_position(raw_pos_b)
         
-        # Noeud A
+        # Node A
         node_a = self.model.get_node_at(xa, ya)
         if not node_a:
             node_a = self.model.create_node(xa, ya)
         
-        # Noeud B
+        # Node B
         node_b = self.model.get_node_at(xb, yb)
         if not node_b:
             node_b = self.model.create_node(xb, yb)
 
-        # On affecte au modèle
+        # Update model references
         wire_item.wire.node_a = node_a
         wire_item.wire.node_b = node_b
 
-        # Reset visuel
+        # Reset visuals
         wire_item.refresh_geometry()
 
     def delete_selection(self):
-        """Supprime tous les items sélectionnés"""
+        """Delete all selected items."""
         for item in self.selectedItems():
-            # Supprime du modèle
-            # On vérifie si l'item est un ComponentItem
+            # Remove from the model
             if hasattr(item, 'component'):
                 dipole_id = item.component.id
-                # On supprime dans le dictionnaire du modèle
                 self.model.remove_dipole(dipole_id)
             
-            # Supprime de la scène
+            # Remove from the scene
             self.removeItem(item)
 
     def refresh_from_model(self):
         """
-        Vide la scène et la reconstruit entièrement depuis le modèle
+        Clear the scene and rebuild it from the model.
         """
         self.clear()
         
-        # On parcourt les dipôles du modèle
+        # Add dipoles
         for dipole in self.model.dipoles.values():
             item = create_component_item(dipole)
             self.addItem(item)
             
-        # TODO: parcourir et dessiner les fils
-        # for wire in self.model.wires.values():
+        # TODO: add wires from the model

@@ -1,14 +1,12 @@
-import sys
-
-from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QAction, QToolBar, QStatusBar, QLabel, QMessageBox, QApplication, QShortcut
+from PyQt5.QtWidgets import QMainWindow, QAction, QToolBar, QStatusBar, QMessageBox, QApplication, QShortcut
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon, QKeySequence
+from PyQt5.QtGui import QKeySequence
 from utils.translator import Translator
 from view.canvas import CircuitView, CircuitScene
 
 class MainWindow(QMainWindow):
     """
-    Fenêtre principale de l'application ElectricSystemLab
+    Main window for the ElectricSystemLab application.
     """
 
     def __init__(self, model=None):
@@ -20,7 +18,7 @@ class MainWindow(QMainWindow):
         self.retranslateUi()
 
     def init_ui_structure(self):
-        """Construction des éléments graphiques"""
+        """Build the UI structure."""
         # Window size and position
         primary_screen = QApplication.primaryScreen()
         if primary_screen is not None:
@@ -44,7 +42,6 @@ class MainWindow(QMainWindow):
         self.setup_toolbar()
 
         # Status bar
-        
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
         
@@ -54,7 +51,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.view)
 
     def create_actions(self):
-        """Crée toutes les actions de la fenêtre principale"""
+        """Create all actions for the main window."""
         def make_action(key, shortcut=None, slot=None):
             action = QAction('', self)
             if shortcut:
@@ -65,7 +62,7 @@ class MainWindow(QMainWindow):
             self.custom_actions[key] = action
             return action
         
-        # File Actions
+        # File actions
         make_action("action_new_file", "Ctrl+N", self.on_new_file)
         make_action("action_new_window", "Ctrl+Shift+N", self.on_new_window)
         make_action("action_open", "Ctrl+O", self.on_open_file)
@@ -76,7 +73,7 @@ class MainWindow(QMainWindow):
         make_action("action_history", None, self.on_version_history)
         make_action("action_quit", "Ctrl+Q", self.close)
 
-        # Edit Actions
+        # Edit actions
         make_action("action_select_all", "Ctrl+A", self.on_select_all)
         make_action("action_select_none", "Ctrl+D", self.on_select_none)
         make_action("action_select_invert", "Ctrl+I", self.on_select_invert)
@@ -88,13 +85,12 @@ class MainWindow(QMainWindow):
         make_action("action_filter_inductors", None, self.on_filter_inductors)
         make_action("action_filter_add", None, self.on_filter_add)
 
-        # View Actions
+        # View actions
         make_action("action_theme_dark", None, self.set_dark_mode)
         make_action("action_theme_light", None, self.set_light_mode)
 
-        # Options Actions
-        
-        # Simulation Actions
+        # Options actions
+        # Simulation actions
 
     def set_dark_mode(self):
         self.change_theme("dark")
@@ -111,13 +107,13 @@ class MainWindow(QMainWindow):
             self.view.setBackgroundBrush(Qt.white)
 
     def create_shortcuts(self):
-        """Définit les raccourcis clavier globaux"""
+        """Define global keyboard shortcuts."""
         
         # Delete key
         self.shortcut_delete = QShortcut(QKeySequence("Del"), self)
         self.shortcut_delete.activated.connect(self.delete_selected_items)
         
-        # Test keys
+        # Tool keys
         self.shortcut_tool_pointer = QShortcut(QKeySequence("V"), self)
         self.shortcut_tool_pointer.activated.connect(lambda: self.set_tool("pointer"))
         self.shortcut_tool_wire = QShortcut(QKeySequence("W"), self)
@@ -134,17 +130,17 @@ class MainWindow(QMainWindow):
         self.shortcut_tool_inductor.activated.connect(lambda: self.set_tool("inductor"))
 
     def set_tool(self, tool_name):
-        """Change l'outil"""
+        """Change the active tool."""
         
-        # Scène
+        # Scene
         if hasattr(self, 'scene'):
             self.scene.set_tool(tool_name)
             
-        # Vue
+        # View
         if hasattr(self, 'view'):
             self.view.set_tool_mode(tool_name)
             
-        # Change le curseur
+        # Cursor
         if tool_name == "pointer":
             self.setCursor(Qt.ArrowCursor)
         else:
@@ -152,7 +148,7 @@ class MainWindow(QMainWindow):
 
 
     def setup_menus(self):
-        """Crée les menus de la fenêtre principale"""
+        """Create the main window menus."""
         menubar = self.menuBar()
 
         # Menus
@@ -162,7 +158,7 @@ class MainWindow(QMainWindow):
         self.menu_options = menubar.addMenu('')
         self.menu_simulation = menubar.addMenu('')
         
-        # File Menu
+        # File menu
         self.menu_file.addAction(self.custom_actions["action_new_file"])
         self.menu_file.addAction(self.custom_actions["action_new_window"])
         self.menu_file.addSeparator()
@@ -182,7 +178,7 @@ class MainWindow(QMainWindow):
         self.menu_file.addSeparator()
         self.menu_file.addAction(self.custom_actions["action_quit"])
 
-        # Edit Menu
+        # Edit menu
         self.menu_edit.addAction(self.custom_actions["action_select_all"])
         self.menu_edit.addAction(self.custom_actions["action_select_none"])
         self.menu_edit.addAction(self.custom_actions["action_select_invert"])
@@ -197,14 +193,14 @@ class MainWindow(QMainWindow):
         self.menu_selection_filter.addAction(self.custom_actions["action_filter_add"])
         self.menu_file.addSeparator()
 
-        # View Menu
+        # View menu
         self.menu_theme = self.menu_view.addMenu('')
         self.menu_theme.addAction(self.custom_actions["action_theme_dark"])
         self.menu_theme.addAction(self.custom_actions["action_theme_light"])
 
-        # Options Menu
+        # Options menu
 
-        # Simulation Menu
+        # Simulation menu
 
 
     def setup_toolbar(self):
@@ -219,7 +215,7 @@ class MainWindow(QMainWindow):
         toolbar.addAction("Zoom 1:1")
 
     def retranslateUi(self):
-        """Met à jour tous les textes"""
+        """Refresh all translated UI text."""
         self.setWindowTitle(Translator.tr("app_title"))
         
         # Menus
@@ -229,14 +225,13 @@ class MainWindow(QMainWindow):
         self.menu_options.setTitle(Translator.tr("menu_options"))
         self.menu_simulation.setTitle(Translator.tr("menu_simulation"))
 
-        # File Menu
+        # File menu
         self.menu_recent_files.setTitle(Translator.tr("menu_recent_files"))
 
-        # Edit Menu
+        # Edit menu
         self.menu_selection_filter.setTitle(Translator.tr("menu_selection_filter"))
 
-        # Mise à jour automatique de toutes les actions stockées
-        # Le dictionnaire self.custom_actions contient {"cle_traduction": QAction}
+        # Update all stored actions
         for key, action in self.custom_actions.items():
             action.setText(Translator.tr(key))
 
@@ -245,13 +240,13 @@ class MainWindow(QMainWindow):
         self.menu_theme.setTitle(Translator.tr("menu_theme"))
 
     def change_language(self, lang):
-        """Change la langue et rafraîchit l'interface"""
+        """Change the language and refresh the UI."""
         if Translator.load_language(lang):
             self.retranslateUi()
         else:
             QMessageBox.warning(self, "Error", f"Unable to load language '{lang}'.")
 
-    # Action Handlers
+    # Action handlers
     def on_new_file(self):
         print("New File")
 
@@ -285,7 +280,7 @@ class MainWindow(QMainWindow):
     def on_select_invert(self):
         print("Invert Selection")
 
-    # TODO peut-être regrouper ces fonctions de filtre dans une seule avec un paramètre ?
+    # TODO: consider merging filter handlers into a single method with parameters
     def on_filter_nodes(self):
         print("Filter Nodes")
 
@@ -308,7 +303,7 @@ class MainWindow(QMainWindow):
         print("Filter Add")
 
     def delete_selected_items(self):
-        """Demande à la scène de supprimer ce qui est sélectionné"""
-        # On vérifie que la scène existe
+        """Ask the scene to delete the current selection."""
+        # Ensure the scene exists
         if hasattr(self, 'scene'):
             self.scene.delete_selection()

@@ -1,17 +1,17 @@
 class Node:
     """
-    Représente un noeud électrique du circuit
+    Represents an electrical node in the circuit.
     """
 
     def __init__(self, node_id, x=0.0, y=0.0, is_ground=False):
         """
-        Initialise un nouveau noeud
+        Initialize a new node.
 
         Args:
-            node_id (int): Identifiant unique du noeud
-            x (float): Coordonnée X sur la grille
-            y (float): Coordonnée Y sur la grille
-            is_ground (bool): Si True, ce noeud est la référence de masse (0V)
+            node_id (int): Unique node ID
+            x (float): X coordinate on the grid
+            y (float): Y coordinate on the grid
+            is_ground (bool): True if this node is the ground reference (0V)
         """
         self.id = int(node_id)
         self.position = (float(x), float(y))

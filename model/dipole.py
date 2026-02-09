@@ -1,22 +1,20 @@
-import math
-
 class Dipole:
     """
-    Classe de base représentant un composant électrique générique
+    Base class for a generic electrical component.
     """
 
     def __init__(self, dipole_id, name, node_a, node_b, x=0.0, y=0.0, rotation=0.0):
         """
-        Initialise un dipôle générique.
+        Initialize a generic dipole.
 
         Args:
-            dipole_id (int): Identifiant unique du composant
-            name (str): Nom affiché
-            node_a (Node): Le premier noeud de connexion (Pôle + conventionnel)
-            node_b (Node): Le second noeud de connexion (Pôle - conventionnel)
-            x (float): Coordonnée X du centre du composant
-            y (float): Coordonnée Y du centre du composant
-            rotation (float): Angle de rotation en degrés
+            dipole_id (int): Unique component ID
+            name (str): Display name
+            node_a (Node): First connection node (conventional +)
+            node_b (Node): Second connection node (conventional -)
+            x (float): X coordinate of the component center
+            y (float): Y coordinate of the component center
+            rotation (float): Rotation angle in degrees
         """
         self.id = int(dipole_id)
         self.name = name
