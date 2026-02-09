@@ -26,5 +26,8 @@
     "action_filter_capacitors": "Filter Capacitors",
     "action_filter_inductors": "Filter Inductors",
     "action_filter_add": "Add Filter",
-    "status_ready": "Ready"
+    "status_ready": "Ready",
+    "menu_theme": "Theme",
+    "action_theme_dark": "Dark Mode",
+    "action_theme_light": "Light Mode"
 }

@@ -26,5 +26,8 @@
     "action_filter_capacitors": "Filtrer les condensateurs",
     "action_filter_inductors": "Filtrer les inducteurs",
     "action_filter_add": "Ajouter un filtre",
-    "status_ready": "Prêt"
+    "status_ready": "Prêt",
+    "menu_theme": "Thème",
+    "action_theme_dark": "Mode Sombre",
+    "action_theme_light": "Mode Clair"
 }

@@ -89,12 +89,26 @@ class MainWindow(QMainWindow):
         make_action("action_filter_add", None, self.on_filter_add)
 
         # View Actions
+        make_action("action_theme_dark", None, self.set_dark_mode)
+        make_action("action_theme_light", None, self.set_light_mode)
 
         # Options Actions
-
+        
         # Simulation Actions
 
+    def set_dark_mode(self):
+        self.change_theme("dark")
 
+    def set_light_mode(self):
+        self.change_theme("light")
+
+    def change_theme(self, theme_name):
+        if theme_name == "dark":
+            self.setStyleSheet("QMainWindow { background-color: #2b2b2b; color: white; }")
+            self.view.setBackgroundBrush(Qt.black)
+        else:
+            self.setStyleSheet("")
+            self.view.setBackgroundBrush(Qt.white)
 
     def create_shortcuts(self):
         """Définit les raccourcis clavier globaux"""
@@ -184,6 +198,9 @@ class MainWindow(QMainWindow):
         self.menu_file.addSeparator()
 
         # View Menu
+        self.menu_theme = self.menu_view.addMenu('')
+        self.menu_theme.addAction(self.custom_actions["action_theme_dark"])
+        self.menu_theme.addAction(self.custom_actions["action_theme_light"])
 
         # Options Menu
 
@@ -224,6 +241,8 @@ class MainWindow(QMainWindow):
             action.setText(Translator.tr(key))
 
         self.status_bar.showMessage(Translator.tr("status_ready"))
+
+        self.menu_theme.setTitle(Translator.tr("menu_theme"))
 
     def change_language(self, lang):
         """Change la langue et rafraîchit l'interface"""
