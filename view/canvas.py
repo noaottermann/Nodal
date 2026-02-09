@@ -115,6 +115,7 @@ class CircuitScene(QGraphicsScene):
         self.temp_wire_line = None
         self.start_node = None
         self._group_move_active = False
+        self._drag_start_on_item = False
 
     def set_tool(self, tool_name):
         """Change l'outil actif"""
@@ -176,10 +177,15 @@ class CircuitScene(QGraphicsScene):
         
         self._last_grid_pos = QPointF(grid_x, grid_y)
         self._group_move_active = False
+        self._drag_start_on_item = False
 
         # Left click
         if event.button() == Qt.LeftButton:
             if self.current_tool == "pointer":
+                # Ne pas declencher un move de groupe si on demarre un rubberband
+                item = self.itemAt(scene_pos, QTransform())
+                if item is not None and not isinstance(item, WireHandle):
+                    self._drag_start_on_item = True
                 super().mousePressEvent(event)
             elif self.current_tool == "wire":
                 self.start_wire_drawing(grid_x, grid_y)
@@ -205,6 +211,9 @@ class CircuitScene(QGraphicsScene):
         
         # Déplacement d'un groupe
         if self.current_tool == "pointer" and self.selectedItems() and event.buttons() & Qt.LeftButton:
+            if not self._drag_start_on_item:
+                super().mouseMoveEvent(event)
+                return
             
             # On ignore si on tire une poignée
             grabber = self.mouseGrabberItem()
@@ -220,8 +229,10 @@ class CircuitScene(QGraphicsScene):
                 self._group_move_active = True
                 # On déplace tous les objets sélectionnés de ce montant exact
                 for item in self.selectedItems():
-                    if isinstance(item, (ComponentItem, WireItem)):
+                    if isinstance(item, ComponentItem):
                         item.setPos(item.pos() + grid_delta)
+                    elif isinstance(item, WireItem):
+                        item.apply_scene_delta(grid_delta)
                 
                 self._last_grid_pos = current_grid_pos
             
@@ -255,6 +266,7 @@ class CircuitScene(QGraphicsScene):
                 super().mouseReleaseEvent(event)
         else:
             super().mouseReleaseEvent(event)
+        self._drag_start_on_item = False
 
     def add_component_at(self, tool_type, x, y):
         """Crée un composant"""

@@ -98,6 +98,30 @@ class WireItem(QGraphicsLineItem):
         """Met à jour juste le trait noir entre les carrés"""
         self.setLine(QLineF(self.handle_a.pos(), self.handle_b.pos()))
 
+    def apply_scene_delta(self, delta):
+        """Déplace le fil via ses noeuds et applique le snapping par extrémité."""
+        scene = self.scene()
+        if scene is None:
+            return
+        if not self.wire.node_a or not self.wire.node_b:
+            return
+
+        ax, ay = self.wire.node_a.position
+        bx, by = self.wire.node_b.position
+
+        ax += delta.x()
+        ay += delta.y()
+        bx += delta.x()
+        by += delta.y()
+
+        snapped_a = scene.get_snapped_position(QPointF(ax, ay))
+        snapped_b = scene.get_snapped_position(QPointF(bx, by))
+
+        self.wire.node_a.position = (snapped_a[0], snapped_a[1])
+        self.wire.node_b.position = (snapped_b[0], snapped_b[1])
+
+        self.refresh_geometry()
+
     def itemChange(self, change, value):
         # Snapping de position
         if change == QGraphicsItem.ItemPositionChange and self.scene():
