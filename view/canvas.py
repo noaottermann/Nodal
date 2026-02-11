@@ -182,7 +182,7 @@ class CircuitScene(QGraphicsScene):
             elif self.current_tool == "wire":
                 self.start_wire_drawing(grid_x, grid_y)
                 event.accept()
-            elif self.current_tool in ["resistor", "source_dc"]:
+            elif self.current_tool in ["resistor", "source_dc", "source_ac", "capacitor", "inductor"]:
                 self.add_component_at(self.current_tool, grid_x, grid_y)
                 event.accept()
             else:
@@ -429,6 +429,9 @@ class CircuitScene(QGraphicsScene):
             if hasattr(item, 'component'):
                 dipole_id = item.component.id
                 self.model.remove_dipole(dipole_id)
+            elif isinstance(item, WireItem):
+                wire_id = item.wire.id
+                self.model.remove_wire(wire_id)
             
             # Remove from the scene
             self.removeItem(item)
@@ -444,4 +447,7 @@ class CircuitScene(QGraphicsScene):
             item = create_component_item(dipole)
             self.addItem(item)
             
-        # TODO: add wires from the model
+        # Add wires
+        for wire in self.model.wires.values():
+            wire_item = WireItem(wire)
+            self.addItem(wire_item)
