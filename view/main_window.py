@@ -99,8 +99,8 @@ class MainWindow(QMainWindow):
         make_action("action_distribute_horiz", None, self.on_distribute_horiz)
         make_action("action_distribute_vertic", None, self.on_distribute_vertic)
         
-        make_action("action_group", "Ctrl+G", self.on_group_items)
-        make_action("action_ungroup", "Ctrl+Shift+G", self.on_ungroup_items)
+        make_action("action_group", None, self.on_group_items)
+        make_action("action_ungroup", None, self.on_ungroup_items)
         make_action("action_clean", None, self.on_clean_canvas)
 
         # View Actions
