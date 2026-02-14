@@ -1,0 +1,424 @@
+from pathlib import Path
+
+from PyQt5.QtCore import Qt, QSize, QPointF
+from PyQt5.QtGui import QIcon, QPixmap, QPainter, QColor, QFont
+from PyQt5.QtWidgets import (
+	QWidget,
+	QHBoxLayout,
+	QVBoxLayout,
+	QAbstractItemView,
+	QListWidget,
+	QListWidgetItem,
+	QLabel,
+	QLineEdit,
+	QSizePolicy,
+	QFrame,
+)
+
+
+class ComponentsPanel(QWidget):
+	def __init__(self, parent=None):
+		super().__init__(parent)
+		self.assets_root = Path(__file__).resolve().parents[1] / "assets"
+
+		self._category_data = self._build_default_categories()
+		self._component_data = self._build_default_components()
+		self._suppress_category_highlight = False
+		self._updating_category_highlight = False
+
+		layout = QHBoxLayout(self)
+		layout.setContentsMargins(0, 0, 0, 0)
+		layout.setSpacing(0)
+
+		self.category_list = QListWidget()
+		self.category_list.setObjectName("categoryList")
+		self.category_list.setViewMode(QListWidget.ListMode)
+		self.category_list.setFixedWidth(82)
+		self.category_list.setSpacing(0)
+		self.category_list.setUniformItemSizes(True)
+		self.category_list.setSelectionMode(QListWidget.SingleSelection)
+		self.category_list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+		self.category_list.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+		self.category_list.setFocusPolicy(Qt.NoFocus)
+		self.category_list.setViewportMargins(0, 0, 0, 0)
+		self.category_list.setContentsMargins(0, 0, 0, 0)
+		self.category_list.setFrameShape(QFrame.NoFrame)
+		self.category_list.setLineWidth(0)
+
+		self.components_list = QListWidget()
+		self.components_list.setObjectName("componentsList")
+		self.components_list.setViewMode(QListWidget.ListMode)
+		self.components_list.setIconSize(QSize(28, 28))
+		self.components_list.setSpacing(4)
+		self.components_list.setUniformItemSizes(True)
+		self.components_list.setSelectionMode(QListWidget.SingleSelection)
+		self.components_list.setDragEnabled(True)
+		self.components_list.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
+		self.components_list.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+		self.components_list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+		self.components_list.setFocusPolicy(Qt.NoFocus)
+		self.components_list.verticalScrollBar().setSingleStep(8)
+		self.components_list.verticalScrollBar().valueChanged.connect(
+			self._update_highlight_from_scroll
+		)
+
+		layout.addWidget(self._wrap_category_list())
+		layout.addWidget(self._wrap_components_list(), 1)
+
+		self._apply_styles()
+		self._populate_categories()
+		self._populate_components_all()
+		self._sync_category_item_widths()
+		self.category_list.currentItemChanged.connect(self._on_category_changed)
+		self.category_list.itemClicked.connect(self._on_category_clicked)
+
+		if self.category_list.count() > 0:
+			self.category_list.setCurrentRow(0)
+
+	def resizeEvent(self, event):
+		super().resizeEvent(event)
+		self._sync_category_item_widths()
+
+	def _wrap_category_list(self):
+		frame = QFrame()
+		frame.setObjectName("categoryPane")
+		layout = QVBoxLayout(frame)
+		layout.setContentsMargins(0, 8, 0, 8)
+		layout.addWidget(self.category_list)
+		return frame
+
+	def _wrap_components_list(self):
+		frame = QFrame()
+		frame.setObjectName("componentsPane")
+		layout = QVBoxLayout(frame)
+		layout.setContentsMargins(10, 8, 10, 8)
+
+		title = QLabel("Components")
+		title.setObjectName("componentsTitle")
+		layout.addWidget(title)
+
+		self.search_input = QLineEdit()
+		self.search_input.setPlaceholderText("Search components")
+		self.search_input.textChanged.connect(self._apply_search_filter)
+		layout.addWidget(self.search_input)
+
+		layout.addWidget(self.components_list, 1)
+		return frame
+
+	def _apply_styles(self):
+		self.setStyleSheet(
+			"""
+			QFrame#categoryPane {
+				background: #f6f4ef;
+				border-right: 1px solid #d7d2c8;
+			}
+			QFrame#componentsPane {
+				background: #f6f4ef;
+			}
+			QListWidget {
+				border: none;
+				background: transparent;
+			}
+			QListWidget::item {
+				padding: 6px;
+				border-radius: 8px;
+				color: #2a2a2a;
+			}
+			QListWidget#categoryList::item {
+				padding: 0px;
+				margin: 0px;
+			}
+			QListWidget#categoryList {
+				padding-left: 0px;
+				margin: 0px;
+			}
+			QListWidget::item:selected {
+				background: #ffe2b6;
+			}
+			QLabel#componentsTitle {
+				color: #2a2a2a;
+				font-size: 14px;
+				font-weight: 600;
+				padding: 4px 2px;
+			}
+			"""
+		)
+
+		base_font = QFont("Segoe UI", 10)
+		self.setFont(base_font)
+
+	def _build_default_categories(self):
+		return [
+			{
+				"key": "sources",
+				"label": "Sources",
+				"icon": "categories/sources.png",
+				"color": "#f25f5c",
+			},
+			{
+				"key": "passive",
+				"label": "Passive",
+				"icon": "categories/passive.png",
+				"color": "#247ba0",
+			},
+			{
+				"key": "measurement",
+				"label": "Measurement",
+				"icon": "categories/measurement.png",
+				"color": "#70c1b3",
+			},
+		]
+
+	def _build_default_components(self):
+		fake_sources = [
+			{
+				"id": f"source_fake_{i}",
+				"label": f"Source {i}",
+				"icon": "components/placeholder.png",
+			}
+			for i in range(1, 11)
+		]
+		fake_passive = [
+			{
+				"id": f"passive_fake_{i}",
+				"label": f"Passive {i}",
+				"icon": "components/placeholder.png",
+			}
+			for i in range(1, 11)
+		]
+		fake_measurement = [
+			{
+				"id": f"measurement_fake_{i}",
+				"label": f"Measurement {i}",
+				"icon": "components/placeholder.png",
+			}
+			for i in range(1, 11)
+		]
+		return {
+			"sources": [
+				{
+					"id": "source_dc",
+					"label": "DC Source",
+					"icon": "components/source_dc.png",
+				},
+				{
+					"id": "source_ac",
+					"label": "AC Source",
+					"icon": "components/source_ac.png",
+				},
+			]
+			+ fake_sources,
+			"passive": [
+				{
+					"id": "resistor",
+					"label": "Resistor",
+					"icon": "components/resistor.png",
+				},
+				{
+					"id": "capacitor",
+					"label": "Capacitor",
+					"icon": "components/capacitor.png",
+				},
+				{
+					"id": "inductor",
+					"label": "Inductor",
+					"icon": "components/inductor.png",
+				},
+			]
+			+ fake_passive,
+			"measurement": fake_measurement,
+		}
+
+	def _populate_categories(self):
+		self.category_list.clear()
+		for category in self._category_data:
+			icon = self._load_icon(category["icon"], category["color"], QSize(24, 24))
+			item = QListWidgetItem()
+			item.setToolTip(category["label"])
+			item.setData(Qt.UserRole, category["key"])
+			item.setSizeHint(QSize(82, 72))
+			self.category_list.addItem(item)
+			self.category_list.setItemWidget(
+				item, self._build_category_widget(icon, category["label"])
+			)
+
+		self._sync_category_item_widths()
+
+	def _on_category_changed(self, current, _previous):
+		if current is None:
+			return
+		category_key = current.data(Qt.UserRole)
+		self._scroll_to_category(category_key)
+
+	def _on_category_clicked(self, item):
+		if item is None:
+			return
+		category_key = item.data(Qt.UserRole)
+		self._scroll_to_category(category_key)
+
+	def _populate_components_all(self):
+		self.components_list.clear()
+		for category in self._category_data:
+			header_item = QListWidgetItem(category["label"])
+			header_item.setData(Qt.UserRole, f"header:{category['key']}")
+			header_item.setFlags(Qt.NoItemFlags)
+			header_item.setSizeHint(QSize(160, 26))
+			self.components_list.addItem(header_item)
+
+			components = self._component_data.get(category["key"], [])
+			if not components:
+				empty_item = QListWidgetItem("No components")
+				empty_item.setFlags(Qt.NoItemFlags)
+				empty_item.setSizeHint(QSize(160, 22))
+				self.components_list.addItem(empty_item)
+				continue
+
+			for component in components:
+				icon = self._load_icon(component["icon"], "#d7d7d7", QSize(28, 28))
+				item = QListWidgetItem(icon, component["label"])
+				item.setData(Qt.UserRole, component["id"])
+				item.setData(Qt.UserRole + 1, category["key"])
+				item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
+				item.setSizeHint(QSize(160, 38))
+				self.components_list.addItem(item)
+
+	def _scroll_to_category(self, category_key):
+		if self._suppress_category_highlight or self._updating_category_highlight:
+			return
+		target_data = f"header:{category_key}"
+		for row in range(self.components_list.count()):
+			item = self.components_list.item(row)
+			if item.data(Qt.UserRole) == target_data:
+				self.components_list.scrollToItem(item, QListWidget.PositionAtTop)
+				return
+
+	def _apply_search_filter(self, text):
+		filter_text = text.strip().lower()
+		self._suppress_category_highlight = bool(filter_text)
+
+		if self._suppress_category_highlight:
+			self.category_list.setCurrentRow(-1)
+
+		visible_by_category = {}
+		for row in range(self.components_list.count()):
+			item = self.components_list.item(row)
+			data = item.data(Qt.UserRole)
+			if isinstance(data, str) and data.startswith("header:"):
+				category_key = data.split(":", 1)[1]
+				item.setHidden(True)
+				visible_by_category[category_key] = False
+				continue
+
+			label = item.text().lower()
+			is_match = filter_text in label if filter_text else True
+			item.setHidden(not is_match)
+			if is_match:
+				category_key = item.data(Qt.UserRole + 1)
+				visible_by_category[category_key] = True
+
+		for row in range(self.components_list.count()):
+			item = self.components_list.item(row)
+			data = item.data(Qt.UserRole)
+			if isinstance(data, str) and data.startswith("header:"):
+				category_key = data.split(":", 1)[1]
+				item.setHidden(not visible_by_category.get(category_key, False))
+
+		if not self._suppress_category_highlight:
+			self._update_highlight_from_scroll()
+
+	def _update_highlight_from_scroll(self):
+		if self._suppress_category_highlight:
+			return
+
+		top_item = self._find_top_visible_item()
+		if top_item is None:
+			return
+
+		category_key = None
+		data = top_item.data(Qt.UserRole)
+		if isinstance(data, str) and data.startswith("header:"):
+			category_key = data.split(":", 1)[1]
+		else:
+			category_key = top_item.data(Qt.UserRole + 1)
+
+		if category_key is None:
+			return
+
+		for row in range(self.category_list.count()):
+			item = self.category_list.item(row)
+			if item.data(Qt.UserRole) == category_key:
+				if self.category_list.currentRow() != row:
+					self._updating_category_highlight = True
+					self.category_list.setCurrentRow(row)
+					self._updating_category_highlight = False
+				return
+
+	def _find_top_visible_item(self):
+		viewport_rect = self.components_list.viewport().rect()
+		for row in range(self.components_list.count()):
+			item = self.components_list.item(row)
+			if item.isHidden():
+				continue
+			item_rect = self.components_list.visualItemRect(item)
+			if item_rect.bottom() >= viewport_rect.top():
+				return item
+		return None
+
+	def _build_category_widget(self, icon, label):
+		widget = QWidget()
+		widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+		layout = QVBoxLayout(widget)
+		layout.setContentsMargins(0, 4, 0, 4)
+		layout.setSpacing(2)
+		layout.setAlignment(Qt.AlignHCenter)
+
+		icon_label = QLabel()
+		icon_label.setObjectName("categoryIcon")
+		icon_label.setAlignment(Qt.AlignCenter)
+		icon_label.setPixmap(icon.pixmap(24, 24))
+
+		text_label = QLabel(label)
+		text_label.setObjectName("categoryText")
+		text_label.setAlignment(Qt.AlignCenter)
+		text_label.setWordWrap(True)
+		text_label.setStyleSheet("font-size: 11px; color: #2a2a2a; margin: 0px;")
+
+		layout.addWidget(icon_label)
+		layout.addWidget(text_label)
+		return widget
+
+	def _sync_category_item_widths(self):
+		viewport_width = self.category_list.viewport().width()
+		if viewport_width <= 0:
+			return
+		for row in range(self.category_list.count()):
+			item = self.category_list.item(row)
+			item.setSizeHint(QSize(viewport_width, 72))
+			widget = self.category_list.itemWidget(item)
+			if widget is not None:
+				widget.setFixedWidth(viewport_width)
+				text_label = widget.findChild(QLabel, "categoryText")
+				if text_label is not None:
+					text_label.setFixedWidth(max(1, viewport_width))
+
+	def _load_icon(self, relative_path, fallback_color, size):
+		icon_path = self.assets_root / relative_path
+		if icon_path.exists():
+			pixmap = QPixmap(str(icon_path))
+			if not pixmap.isNull():
+				return QIcon(pixmap)
+
+		pixmap = QPixmap(size)
+		pixmap.fill(Qt.transparent)
+		painter = QPainter(pixmap)
+		painter.setRenderHint(QPainter.Antialiasing)
+		painter.setPen(Qt.NoPen)
+		painter.setBrush(QColor(fallback_color))
+		painter.drawRoundedRect(2, 2, size.width() - 4, size.height() - 4, 6, 6)
+
+		painter.setBrush(QColor(255, 255, 255, 40))
+		center = QPointF(size.width() / 2, size.height() / 2)
+		painter.drawEllipse(center, size.width() / 4, size.height() / 4)
+		painter.end()
+
+		return QIcon(pixmap)

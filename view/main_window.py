@@ -5,6 +5,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QKeySequence
 from utils.translator import Translator
 from view.canvas import CircuitView, CircuitScene
+from view.components_panel import ComponentsPanel
 
 class MainWindow(QMainWindow):
     """
@@ -50,7 +51,18 @@ class MainWindow(QMainWindow):
         # Central widget
         self.scene = CircuitScene(self.model)
         self.view = CircuitView(self.scene)
-        self.setCentralWidget(self.view)
+
+        self.components_panel = ComponentsPanel()
+        self.components_panel.setMinimumWidth(200)
+        self.components_panel.setMaximumWidth(300)
+
+        central_widget = QWidget()
+        central_layout = QHBoxLayout(central_widget)
+        central_layout.setContentsMargins(0, 0, 0, 0)
+        central_layout.setSpacing(0)
+        central_layout.addWidget(self.components_panel)
+        central_layout.addWidget(self.view, 1)
+        self.setCentralWidget(central_widget)
 
     def create_actions(self):
         """Crée toutes les actions de la fenêtre principale"""
@@ -525,7 +537,9 @@ class MainWindow(QMainWindow):
         print("Action: Surligner les courts-circuits")
 
     def on_toggle_view_components(self):
-        print("Fenêtre: Composants")
+        if hasattr(self, "components_panel"):
+            is_visible = self.components_panel.isVisible()
+            self.components_panel.setVisible(not is_visible)
 
     def on_toggle_view_simulation(self):
         print("Fenêtre: Simulation")
