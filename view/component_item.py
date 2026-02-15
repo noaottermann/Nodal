@@ -1,6 +1,6 @@
 import math
 
-from PyQt5.QtWidgets import QGraphicsItem, QStyle
+from PyQt5.QtWidgets import QGraphicsItem, QStyle, QApplication
 from PyQt5.QtCore import QRectF, Qt, QPointF
 from PyQt5.QtGui import QPainter, QPen, QColor, QFont, QPainterPath
 
@@ -14,11 +14,15 @@ class ComponentItem(QGraphicsItem):
     def __init__(self, component_model):
         super().__init__()
         self.component = component_model
+
+        self._press_scene_pos = None
+        self._drag_started = False
         
         # Interaction settings
-        self.setFlags(QGraphicsItem.ItemIsMovable | 
-                      QGraphicsItem.ItemIsSelectable | 
-                      QGraphicsItem.ItemSendsGeometryChanges)
+        self.setFlags(
+            QGraphicsItem.ItemIsSelectable
+            | QGraphicsItem.ItemSendsGeometryChanges
+        )
         
         # Initial position and rotation
         x, y = self.component.position
@@ -39,6 +43,12 @@ class ComponentItem(QGraphicsItem):
         margin = 5
         return QRectF(-self.width/2 - margin, -self.height/2 - margin, self.width + 2*margin, self.height + 2*margin)
 
+    def shape(self):
+        """Use a tighter shape so clicks in empty space don't grab the item."""
+        path = QPainterPath()
+        path.addRect(QRectF(-self.width / 2, -self.height / 2, self.width, self.height))
+        return path
+
     def itemChange(self, change, value):
         # Snapping
         if change == QGraphicsItem.ItemPositionChange and self.scene():
@@ -57,10 +67,28 @@ class ComponentItem(QGraphicsItem):
         Called when the component is released after a move.
         """
         super().mouseReleaseEvent(event)
+
+        self._drag_started = False
+        self._press_scene_pos = None
         
         # Ask the scene to update connections
         if self.scene():
             self.scene().handle_component_move(self)
+
+    def mousePressEvent(self, event):
+        self._press_scene_pos = event.scenePos()
+        self._drag_started = False
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if not self._drag_started and self._press_scene_pos is not None:
+            drag_distance = (event.scenePos() - self._press_scene_pos).manhattanLength()
+            if drag_distance < QApplication.startDragDistance():
+                event.ignore()
+                return
+            self._drag_started = True
+
+        super().mouseMoveEvent(event)
 
     def update_model_nodes(self):
         """

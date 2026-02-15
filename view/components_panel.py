@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from PyQt5.QtCore import Qt, QSize, QPointF
-from PyQt5.QtGui import QIcon, QPixmap, QPainter, QColor, QFont
+from PyQt5.QtCore import Qt, QSize, QPointF, QMimeData
+from PyQt5.QtGui import QIcon, QPixmap, QPainter, QColor, QFont, QDrag
 from PyQt5.QtWidgets import (
 	QWidget,
 	QHBoxLayout,
@@ -45,7 +45,7 @@ class ComponentsPanel(QWidget):
 		self.category_list.setFrameShape(QFrame.NoFrame)
 		self.category_list.setLineWidth(0)
 
-		self.components_list = QListWidget()
+		self.components_list = ComponentsListWidget()
 		self.components_list.setObjectName("componentsList")
 		self.components_list.setViewMode(QListWidget.ListMode)
 		self.components_list.setIconSize(QSize(28, 28))
@@ -422,3 +422,25 @@ class ComponentsPanel(QWidget):
 		painter.end()
 
 		return QIcon(pixmap)
+
+
+class ComponentsListWidget(QListWidget):
+	MIME_TYPE = "application/x-component-id"
+
+	def startDrag(self, supportedActions):
+		item = self.currentItem()
+		if item is None:
+			return
+
+		component_id = item.data(Qt.UserRole)
+		if not component_id or (isinstance(component_id, str) and component_id.startswith("header:")):
+			return
+
+		mime = QMimeData()
+		mime.setData(self.MIME_TYPE, str(component_id).encode("utf-8"))
+
+		drag = QDrag(self)
+		drag.setMimeData(mime)
+		if not item.icon().isNull():
+			drag.setPixmap(item.icon().pixmap(32, 32))
+		drag.exec_(supportedActions)

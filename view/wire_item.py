@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QGraphicsLineItem, QGraphicsRectItem, QGraphicsItem
-from PyQt5.QtGui import QPen, QColor, QBrush
+from PyQt5.QtGui import QPen, QColor, QBrush, QPainterPath, QPainterPathStroker
 from PyQt5.QtCore import Qt, QPointF, QLineF
 
 class WireHandle(QGraphicsRectItem):
@@ -98,6 +98,15 @@ class WireItem(QGraphicsLineItem):
         """Update only the line between the handles."""
         self.setLine(QLineF(self.handle_a.pos(), self.handle_b.pos()))
 
+    def shape(self):
+        """Return a thicker hit area to make wire selection easier."""
+        path = QPainterPath()
+        path.moveTo(self.line().p1())
+        path.lineTo(self.line().p2())
+        stroker = QPainterPathStroker()
+        stroker.setWidth(12)
+        return stroker.createStroke(path)
+
     def _node_shared_with_dipole(self, node, model):
         """Return True if the node is referenced by any dipole."""
         if node is None:
@@ -118,13 +127,18 @@ class WireItem(QGraphicsLineItem):
         if not self.wire.node_a or not self.wire.node_b:
             return
 
+        shared_a = self._node_shared_with_dipole(self.wire.node_a, model)
+        shared_b = self._node_shared_with_dipole(self.wire.node_b, model)
+
         if detach_shared_nodes:
-            if self._node_shared_with_dipole(self.wire.node_a, model):
+            if shared_a:
                 ax, ay = self.wire.node_a.position
                 self.wire.node_a = model.create_node(ax, ay)
-            if self._node_shared_with_dipole(self.wire.node_b, model):
+                shared_a = False
+            if shared_b:
                 bx, by = self.wire.node_b.position
                 self.wire.node_b = model.create_node(bx, by)
+                shared_b = False
 
         ax, ay = self.wire.node_a.position
         bx, by = self.wire.node_b.position
@@ -134,11 +148,17 @@ class WireItem(QGraphicsLineItem):
         bx += delta.x()
         by += delta.y()
 
-        snapped_a = scene.get_snapped_position(QPointF(ax, ay))
-        snapped_b = scene.get_snapped_position(QPointF(bx, by))
+        if shared_a:
+            self.wire.node_a.position = (ax, ay)
+        else:
+            snapped_a = scene.get_snapped_position(QPointF(ax, ay))
+            self.wire.node_a.position = (snapped_a[0], snapped_a[1])
 
-        self.wire.node_a.position = (snapped_a[0], snapped_a[1])
-        self.wire.node_b.position = (snapped_b[0], snapped_b[1])
+        if shared_b:
+            self.wire.node_b.position = (bx, by)
+        else:
+            snapped_b = scene.get_snapped_position(QPointF(bx, by))
+            self.wire.node_b.position = (snapped_b[0], snapped_b[1])
 
         self.refresh_geometry()
 
