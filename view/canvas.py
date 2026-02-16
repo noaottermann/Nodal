@@ -59,97 +59,107 @@ class CircuitView(QGraphicsView):
             super().wheelEvent(event)
         
     def mousePressEvent(self, event):
-        # Middle click starts panning
-        if event.button() == Qt.MiddleButton:
-            self._is_panning = True
-            self._pan_start_x = event.x()
-            self._pan_start_y = event.y()
-            self.setCursor(Qt.ClosedHandCursor)
-            event.accept()
-        else:
-            super().mousePressEvent(event)
+        if self._handle_pan_press(event):
+            return
+        super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
-        if event.button() == Qt.MiddleButton:
-            self._is_panning = False
-            # Restore cursor
-            self.setCursor(Qt.ArrowCursor) 
-            event.accept()
-        else:
-            super().mouseReleaseEvent(event)
+        if self._handle_pan_release(event):
+            return
+        super().mouseReleaseEvent(event)
 
     def mouseMoveEvent(self, event):
-        if self._is_panning:
-            # Calculate mouse delta
-            dx = event.x() - self._pan_start_x
-            dy = event.y() - self._pan_start_y
-            
-            self._pan_start_x = event.x()
-            self._pan_start_y = event.y()
-            
-            # Adjust hidden scrollbars
-            self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - dx)
-            self.verticalScrollBar().setValue(self.verticalScrollBar().value() - dy)
-            event.accept()
-        else:
-            super().mouseMoveEvent(event)
+        if self._handle_pan_move(event):
+            return
+        super().mouseMoveEvent(event)
 
     def dragEnterEvent(self, event):
-        if event.mimeData().hasFormat(ComponentsListWidget.MIME_TYPE):
-            component_id = bytes(
-                event.mimeData().data(ComponentsListWidget.MIME_TYPE)
-            ).decode("utf-8")
-            tool_name = self._component_id_to_tool(component_id)
-            self._ensure_ghost_preview(tool_name)
-            event.acceptProposedAction()
-        else:
+        tool_name = self._drag_component_tool(event)
+        if tool_name is None:
             super().dragEnterEvent(event)
+            return
+        self._ensure_ghost_preview(tool_name)
+        event.acceptProposedAction()
 
     def dragMoveEvent(self, event):
-        if event.mimeData().hasFormat(ComponentsListWidget.MIME_TYPE):
-            component_id = bytes(
-                event.mimeData().data(ComponentsListWidget.MIME_TYPE)
-            ).decode("utf-8")
-            tool_name = self._component_id_to_tool(component_id)
-            self._ensure_ghost_preview(tool_name)
-
-            if self._ghost_preview is not None:
-                scene_pos = self.mapToScene(event.pos())
-                if hasattr(self.scene(), "get_snapped_position"):
-                    grid_x, grid_y = self.scene().get_snapped_position(scene_pos)
-                else:
-                    grid_x, grid_y = scene_pos.x(), scene_pos.y()
-                self._ghost_preview.setPos(grid_x, grid_y)
-
-            event.acceptProposedAction()
-        else:
+        tool_name = self._drag_component_tool(event)
+        if tool_name is None:
             super().dragMoveEvent(event)
+            return
+        self._ensure_ghost_preview(tool_name)
+        self._update_ghost_position(event)
+        event.acceptProposedAction()
 
     def dropEvent(self, event):
-        if not event.mimeData().hasFormat(ComponentsListWidget.MIME_TYPE):
+        tool_name = self._drag_component_tool(event)
+        if tool_name is None:
+            self._clear_ghost_preview()
             super().dropEvent(event)
             return
 
-        component_id = bytes(event.mimeData().data(ComponentsListWidget.MIME_TYPE)).decode("utf-8")
-        tool_name = self._component_id_to_tool(component_id)
-        if tool_name is None:
-            self._clear_ghost_preview()
-            event.ignore()
-            return
-
-        scene_pos = self.mapToScene(event.pos())
-        if hasattr(self.scene(), "get_snapped_position"):
-            grid_x, grid_y = self.scene().get_snapped_position(scene_pos)
-        else:
-            grid_x, grid_y = scene_pos.x(), scene_pos.y()
-
-        self.scene().add_component_at(tool_name, grid_x, grid_y)
+        self._drop_component_at(event, tool_name)
         self._clear_ghost_preview()
         event.acceptProposedAction()
 
     def dragLeaveEvent(self, event):
         self._clear_ghost_preview()
         super().dragLeaveEvent(event)
+
+    def _handle_pan_press(self, event):
+        if event.button() != Qt.MiddleButton:
+            return False
+        self._is_panning = True
+        self._pan_start_x = event.x()
+        self._pan_start_y = event.y()
+        self.setCursor(Qt.ClosedHandCursor)
+        event.accept()
+        return True
+
+    def _handle_pan_release(self, event):
+        if event.button() != Qt.MiddleButton:
+            return False
+        self._is_panning = False
+        self.setCursor(Qt.ArrowCursor)
+        event.accept()
+        return True
+
+    def _handle_pan_move(self, event):
+        if not self._is_panning:
+            return False
+        dx = event.x() - self._pan_start_x
+        dy = event.y() - self._pan_start_y
+        self._pan_start_x = event.x()
+        self._pan_start_y = event.y()
+        self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - dx)
+        self.verticalScrollBar().setValue(self.verticalScrollBar().value() - dy)
+        event.accept()
+        return True
+
+    def _drag_component_tool(self, event):
+        if not event.mimeData().hasFormat(ComponentsListWidget.MIME_TYPE):
+            return None
+        component_id = bytes(
+            event.mimeData().data(ComponentsListWidget.MIME_TYPE)
+        ).decode("utf-8")
+        return self._component_id_to_tool(component_id)
+
+    def _update_ghost_position(self, event):
+        if self._ghost_preview is None:
+            return
+        scene_pos = self.mapToScene(event.pos())
+        if hasattr(self.scene(), "get_snapped_position"):
+            grid_x, grid_y = self.scene().get_snapped_position(scene_pos)
+        else:
+            grid_x, grid_y = scene_pos.x(), scene_pos.y()
+        self._ghost_preview.setPos(grid_x, grid_y)
+
+    def _drop_component_at(self, event, tool_name):
+        scene_pos = self.mapToScene(event.pos())
+        if hasattr(self.scene(), "get_snapped_position"):
+            grid_x, grid_y = self.scene().get_snapped_position(scene_pos)
+        else:
+            grid_x, grid_y = scene_pos.x(), scene_pos.y()
+        self.scene().add_component_at(tool_name, grid_x, grid_y)
 
     def _component_id_to_tool(self, component_id):
         if component_id.startswith("source_fake_"):
@@ -270,144 +280,67 @@ class CircuitScene(QGraphicsScene):
 
     def mousePressEvent(self, event):
         scene_pos = event.scenePos()
-        self._press_scene_pos = scene_pos
+        grid_x, grid_y = self._compute_press_grid(scene_pos)
+        self._set_press_state(scene_pos, grid_x, grid_y)
+
+        if event.button() != Qt.LeftButton:
+            super().mousePressEvent(event)
+            return
+
+        if self.current_tool == "pointer":
+            if self._handle_pointer_press(event, scene_pos):
+                return
+            super().mousePressEvent(event)
+            return
+
+        if self._handle_tool_press(event, grid_x, grid_y):
+            return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        # Ghost wire
+        if self._handle_wire_preview_move(event):
+            return
+        
+        # Group move
+        if self._handle_group_move(event):
+            return
+
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        """Handle left-click release actions."""
+        if event.button() != Qt.LeftButton:
+            super().mouseReleaseEvent(event)
+            return
+
+        if self._handle_pointer_release(event):
+            self._reset_press_state()
+            return
+
+        if self.current_tool == "wire" and self.drawing_wire:
+            scene_pos = event.scenePos()
+            grid_x, grid_y = self.get_snapped_position(scene_pos)
+            self.finish_wire_drawing(grid_x, grid_y)
+            event.accept()
+        else:
+            super().mouseReleaseEvent(event)
+
+        self._reset_press_state()
+
+    def _compute_press_grid(self, scene_pos):
         grid_x, grid_y = self.get_snapped_position(scene_pos)
         if self.current_tool == "pointer":
-            grid_x, grid_y = self.snap_to_grid(scene_pos)
+            return self.snap_to_grid(scene_pos)
+        return grid_x, grid_y
 
+    def _set_press_state(self, scene_pos, grid_x, grid_y):
+        self._press_scene_pos = scene_pos
         self._last_grid_pos = QPointF(grid_x, grid_y)
         self._group_move_active = False
         self._drag_started_on_item = False
 
-        # Left click
-        if event.button() == Qt.LeftButton:
-            if self.current_tool == "pointer":
-                # Avoid group moves when starting a rubber-band selection
-                item = self.itemAt(scene_pos, QTransform())
-                if isinstance(item, WireHandle):
-                    parent = item.parentItem()
-                    if parent is not None:
-                        parent.setSelected(True)
-                    self._drag_started_on_item = False
-                    self._suppress_move_until_release = False
-                elif isinstance(item, WireItem):
-                    if item.isSelected() and len(self.selectedItems()) > 1:
-                        self._selection_snapshot = list(self.selectedItems())
-                        self._drag_started_on_item = True
-                        self._suppress_move_until_release = False
-                        event.accept()
-                        return
-                    if not item.isSelected() and not (event.modifiers() & (Qt.ShiftModifier | Qt.ControlModifier)):
-                        self.clearSelection()
-                    item.setSelected(True)
-                    self._drag_started_on_item = True
-                    self._suppress_move_until_release = False
-                elif isinstance(item, ComponentItem):
-                    self._drag_started_on_item = True
-                    self._suppress_move_until_release = False
-                elif not (event.modifiers() & (Qt.ShiftModifier | Qt.ControlModifier)):
-                    self.clearSelection()
-                    self._suppress_move_until_release = True
-                super().mousePressEvent(event)
-            elif self.current_tool == "wire":
-                self.start_wire_drawing(grid_x, grid_y)
-                event.accept()
-            elif self.current_tool in ["resistor", "source_dc", "source_ac", "capacitor", "inductor"]:
-                self.add_component_at(self.current_tool, grid_x, grid_y)
-                event.accept()
-            else:
-                super().mousePressEvent(event)
-        else:
-            super().mousePressEvent(event)
-
-    def mouseMoveEvent(self, event):
-        # Ghost wire
-        if self.current_tool == "wire" and self.drawing_wire and self.temp_wire_item:
-            new_pos = event.scenePos()
-            grid_x, grid_y = self.get_snapped_position(new_pos)
-            line = self.temp_wire_item.line()
-            line.setP2(QPointF(grid_x, grid_y))
-            self.temp_wire_item.setLine(line)
-            super().mouseMoveEvent(event)
-            return
-        
-        # Group move
-        if self.current_tool == "pointer" and self.selectedItems() and event.buttons() & Qt.LeftButton:
-            if not self._drag_started_on_item:
-                super().mouseMoveEvent(event)
-                return
-
-            if self._suppress_move_until_release:
-                super().mouseMoveEvent(event)
-                return
-
-            if self._press_scene_pos is not None:
-                drag_distance = (event.scenePos() - self._press_scene_pos).manhattanLength()
-                if drag_distance < QApplication.startDragDistance():
-                    super().mouseMoveEvent(event)
-                    return
-
-            selected_component_nodes = set()
-            for selected_item in self.selectedItems():
-                if isinstance(selected_item, ComponentItem):
-                    selected_component_nodes.add(selected_item.component.node_a)
-                    selected_component_nodes.add(selected_item.component.node_b)
-            
-            # Ignore drag when manipulating a wire handle
-            grabber = self.mouseGrabberItem()
-            if isinstance(grabber, WireHandle):
-                super().mouseMoveEvent(event)
-                return
-            
-            current_grid_x, current_grid_y = self.snap_to_grid(event.scenePos())
-            current_grid_pos = QPointF(current_grid_x, current_grid_y)
-            grid_delta = current_grid_pos - self._last_grid_pos
-            
-            if grid_delta.manhattanLength() > 0:
-                self._group_move_active = True
-                # Move all selected items by the same delta
-                for item in self.selectedItems():
-                    if isinstance(item, ComponentItem):
-                        item.setPos(item.pos() + grid_delta)
-                    elif isinstance(item, WireItem):
-                        detach = True
-                        if selected_component_nodes:
-                            if item.wire.node_a in selected_component_nodes or item.wire.node_b in selected_component_nodes:
-                                detach = False
-                        item.apply_scene_delta(grid_delta, detach_shared_nodes=detach)
-                
-                self._last_grid_pos = current_grid_pos
-            
-            event.accept()
-            
-        else:
-            super().mouseMoveEvent(event)
-
-    def mouseReleaseEvent(self, event):
-        """Handle left-click release actions."""
-        if event.button() == Qt.LeftButton:
-            if self.current_tool == "pointer" and self._group_move_active:
-                # Finalize group move (model update + per-item snapping)
-                for item in self.selectedItems():
-                    if isinstance(item, ComponentItem):
-                        self.handle_component_move(item)
-                    elif isinstance(item, WireItem):
-                        self.handle_wire_move(item)
-                self._group_move_active = False
-                event.accept()
-                return
-            
-            if self.current_tool == "wire" and self.drawing_wire:
-                # Finish wire
-                scene_pos = event.scenePos()
-                grid_x, grid_y = self.get_snapped_position(scene_pos)
-                self.finish_wire_drawing(grid_x, grid_y)
-                event.accept()
-                
-            else:
-                super().mouseReleaseEvent(event)
-        else:
-            super().mouseReleaseEvent(event)
+    def _reset_press_state(self):
         self._drag_started_on_item = False
         self._press_scene_pos = None
         self._suppress_move_until_release = False
@@ -415,6 +348,122 @@ class CircuitScene(QGraphicsScene):
             for item in self._selection_snapshot:
                 item.setSelected(True)
             self._selection_snapshot = None
+
+    def _handle_pointer_press(self, event, scene_pos):
+        item = self.itemAt(scene_pos, QTransform())
+        if isinstance(item, WireHandle):
+            parent = item.parentItem()
+            if parent is not None:
+                parent.setSelected(True)
+            self._drag_started_on_item = False
+            self._suppress_move_until_release = False
+            return False
+        if isinstance(item, WireItem):
+            if item.isSelected() and len(self.selectedItems()) > 1:
+                self._selection_snapshot = list(self.selectedItems())
+                self._drag_started_on_item = True
+                self._suppress_move_until_release = False
+                event.accept()
+                return True
+            if not item.isSelected() and not (event.modifiers() & (Qt.ShiftModifier | Qt.ControlModifier)):
+                self.clearSelection()
+            item.setSelected(True)
+            self._drag_started_on_item = True
+            self._suppress_move_until_release = False
+            return False
+        if isinstance(item, ComponentItem):
+            self._drag_started_on_item = True
+            self._suppress_move_until_release = False
+            return False
+        if not (event.modifiers() & (Qt.ShiftModifier | Qt.ControlModifier)):
+            self.clearSelection()
+            self._suppress_move_until_release = True
+        return False
+
+    def _handle_tool_press(self, event, grid_x, grid_y):
+        if self.current_tool == "wire":
+            self.start_wire_drawing(grid_x, grid_y)
+            event.accept()
+            return True
+        if self.current_tool in [
+            "resistor",
+            "source_dc",
+            "source_ac",
+            "capacitor",
+            "inductor",
+        ]:
+            self.add_component_at(self.current_tool, grid_x, grid_y)
+            event.accept()
+            return True
+        return False
+
+    def _handle_wire_preview_move(self, event):
+        if self.current_tool != "wire" or not self.drawing_wire or not self.temp_wire_item:
+            return False
+        new_pos = event.scenePos()
+        grid_x, grid_y = self.get_snapped_position(new_pos)
+        line = self.temp_wire_item.line()
+        line.setP2(QPointF(grid_x, grid_y))
+        self.temp_wire_item.setLine(line)
+        super().mouseMoveEvent(event)
+        return True
+
+    def _handle_group_move(self, event):
+        if self.current_tool != "pointer" or not self.selectedItems() or not (event.buttons() & Qt.LeftButton):
+            return False
+        if not self._drag_started_on_item:
+            return False
+        if self._suppress_move_until_release:
+            return False
+        if self._press_scene_pos is not None:
+            drag_distance = (event.scenePos() - self._press_scene_pos).manhattanLength()
+            if drag_distance < QApplication.startDragDistance():
+                return False
+
+        selected_component_nodes = set()
+        for selected_item in self.selectedItems():
+            if isinstance(selected_item, ComponentItem):
+                selected_component_nodes.add(selected_item.component.node_a)
+                selected_component_nodes.add(selected_item.component.node_b)
+
+        grabber = self.mouseGrabberItem()
+        if isinstance(grabber, WireHandle):
+            return False
+
+        current_grid_x, current_grid_y = self.snap_to_grid(event.scenePos())
+        current_grid_pos = QPointF(current_grid_x, current_grid_y)
+        grid_delta = current_grid_pos - self._last_grid_pos
+
+        if grid_delta.manhattanLength() > 0:
+            self._group_move_active = True
+            for item in self.selectedItems():
+                if isinstance(item, ComponentItem):
+                    item.setPos(item.pos() + grid_delta)
+                elif isinstance(item, WireItem):
+                    detach = True
+                    if selected_component_nodes:
+                        if item.wire.node_a in selected_component_nodes or item.wire.node_b in selected_component_nodes:
+                            detach = False
+                    item.apply_scene_delta(grid_delta, detach_shared_nodes=detach)
+
+            self._last_grid_pos = current_grid_pos
+
+        event.accept()
+        return True
+
+    def _handle_pointer_release(self, event):
+        if self.current_tool != "pointer":
+            return False
+        if not self._group_move_active:
+            return False
+        for item in self.selectedItems():
+            if isinstance(item, ComponentItem):
+                self.handle_component_move(item)
+            elif isinstance(item, WireItem):
+                self.handle_wire_move(item)
+        self._group_move_active = False
+        event.accept()
+        return True
 
     def add_component_at(self, tool_type, x, y):
         """Create a component at the given position."""

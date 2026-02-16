@@ -259,28 +259,38 @@ class ComponentsPanel(QWidget):
 	def _populate_components_all(self):
 		self.components_list.clear()
 		for category in self._category_data:
-			header_item = QListWidgetItem(category["label"])
-			header_item.setData(Qt.UserRole, f"header:{category['key']}")
-			header_item.setFlags(Qt.NoItemFlags)
-			header_item.setSizeHint(QSize(160, 26))
-			self.components_list.addItem(header_item)
+			self._add_category_section(category)
 
-			components = self._component_data.get(category["key"], [])
-			if not components:
-				empty_item = QListWidgetItem("No components")
-				empty_item.setFlags(Qt.NoItemFlags)
-				empty_item.setSizeHint(QSize(160, 22))
-				self.components_list.addItem(empty_item)
-				continue
+	def _add_category_section(self, category):
+		self._add_category_header(category)
+		components = self._component_data.get(category["key"], [])
+		if not components:
+			self._add_empty_category()
+			return
+		for component in components:
+			self._add_component_row(component, category["key"])
 
-			for component in components:
-				icon = self._load_icon(component["icon"], "#d7d7d7", QSize(28, 28))
-				item = QListWidgetItem(icon, component["label"])
-				item.setData(Qt.UserRole, component["id"])
-				item.setData(Qt.UserRole + 1, category["key"])
-				item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
-				item.setSizeHint(QSize(160, 38))
-				self.components_list.addItem(item)
+	def _add_category_header(self, category):
+		header_item = QListWidgetItem(category["label"])
+		header_item.setData(Qt.UserRole, f"header:{category['key']}")
+		header_item.setFlags(Qt.NoItemFlags)
+		header_item.setSizeHint(QSize(160, 26))
+		self.components_list.addItem(header_item)
+
+	def _add_empty_category(self):
+		empty_item = QListWidgetItem("No components")
+		empty_item.setFlags(Qt.NoItemFlags)
+		empty_item.setSizeHint(QSize(160, 22))
+		self.components_list.addItem(empty_item)
+
+	def _add_component_row(self, component, category_key):
+		icon = self._load_icon(component["icon"], "#d7d7d7", QSize(28, 28))
+		item = QListWidgetItem(icon, component["label"])
+		item.setData(Qt.UserRole, component["id"])
+		item.setData(Qt.UserRole + 1, category_key)
+		item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
+		item.setSizeHint(QSize(160, 38))
+		self.components_list.addItem(item)
 
 	def _scroll_to_category(self, category_key):
 		if self._suppress_category_highlight or self._updating_category_highlight:
@@ -294,11 +304,18 @@ class ComponentsPanel(QWidget):
 
 	def _apply_search_filter(self, text):
 		filter_text = text.strip().lower()
-		self._suppress_category_highlight = bool(filter_text)
+		self._set_filter_state(filter_text)
+		visible_by_category = self._apply_component_filter(filter_text)
+		self._apply_header_visibility(visible_by_category)
+		if not self._suppress_category_highlight:
+			self._update_highlight_from_scroll()
 
+	def _set_filter_state(self, filter_text):
+		self._suppress_category_highlight = bool(filter_text)
 		if self._suppress_category_highlight:
 			self.category_list.setCurrentRow(-1)
 
+	def _apply_component_filter(self, filter_text):
 		visible_by_category = {}
 		for row in range(self.components_list.count()):
 			item = self.components_list.item(row)
@@ -315,16 +332,15 @@ class ComponentsPanel(QWidget):
 			if is_match:
 				category_key = item.data(Qt.UserRole + 1)
 				visible_by_category[category_key] = True
+		return visible_by_category
 
+	def _apply_header_visibility(self, visible_by_category):
 		for row in range(self.components_list.count()):
 			item = self.components_list.item(row)
 			data = item.data(Qt.UserRole)
 			if isinstance(data, str) and data.startswith("header:"):
 				category_key = data.split(":", 1)[1]
 				item.setHidden(not visible_by_category.get(category_key, False))
-
-		if not self._suppress_category_highlight:
-			self._update_highlight_from_scroll()
 
 	def _update_highlight_from_scroll(self):
 		if self._suppress_category_highlight:

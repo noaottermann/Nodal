@@ -21,21 +21,7 @@ class MainWindow(QMainWindow):
 
     def init_ui_structure(self):
         """Construction des éléments graphiques"""
-        # Window size and position
-        primary_screen = QApplication.primaryScreen()
-        if primary_screen is not None:
-            screen_geometry = primary_screen.availableGeometry()
-            screen_width = screen_geometry.width()
-            screen_height = screen_geometry.height()
-        else:
-            # Fallback values if no screen is available
-            screen_width = 1024
-            screen_height = 768
-        width = int(screen_width * 0.8)
-        height = int(screen_height * 0.8)
-        x = (screen_width - width) // 2
-        y = (screen_height - height) // 2
-        self.setGeometry(x, y, width, height)
+        self._configure_window_geometry()
         
         # Setup
         self.create_actions()
@@ -49,6 +35,24 @@ class MainWindow(QMainWindow):
         self.setStatusBar(self.status_bar)
         
         # Central widget
+        self._setup_central_widget()
+
+    def _configure_window_geometry(self):
+        primary_screen = QApplication.primaryScreen()
+        if primary_screen is not None:
+            screen_geometry = primary_screen.availableGeometry()
+            screen_width = screen_geometry.width()
+            screen_height = screen_geometry.height()
+        else:
+            screen_width = 1024
+            screen_height = 768
+        width = int(screen_width * 0.8)
+        height = int(screen_height * 0.8)
+        x = (screen_width - width) // 2
+        y = (screen_height - height) // 2
+        self.setGeometry(x, y, width, height)
+
+    def _setup_central_widget(self):
         self.scene = CircuitScene(self.model)
         self.view = CircuitView(self.scene)
 
@@ -66,107 +70,109 @@ class MainWindow(QMainWindow):
 
     def create_actions(self):
         """Crée toutes les actions de la fenêtre principale"""
-        def make_action(key, shortcut=None, slot=None):
-            action = QAction('', self)
-            if shortcut:
-                action.setShortcut(shortcut)
-            if slot:
-                action.triggered.connect(slot)
-            # The action is stored in the dictionary with its translation key as its ID
-            self.custom_actions[key] = action
-            return action
-        
-        # File Actions
-        make_action("action_new_file", "Ctrl+N", self.on_new_file)
-        make_action("action_new_window", "Ctrl+Shift+N", self.on_new_window)
-        make_action("action_open", "Ctrl+O", self.on_open_file)
-        make_action("action_save", "Ctrl+S", self.on_save_file)
-        make_action("action_save_as", "Ctrl+Shift+S", self.on_save_as)
-        make_action("action_import", None, self.on_import)
-        make_action("action_export", None, self.on_export)
-        make_action("action_history", None, self.on_version_history)
-        make_action("action_quit", "Ctrl+Q", self.close)
+        self._create_file_actions()
+        self._create_edit_actions()
+        self._create_view_actions()
+        self._create_options_actions()
 
-        # Edit Actions
-        make_action("action_select_all", "Ctrl+A", self.on_select_all)
-        make_action("action_select_none", "Ctrl+D", self.on_select_none)
-        make_action("action_select_invert", "Ctrl+I", self.on_select_invert)
-        make_action("action_filter_nodes", None, self.on_filter_nodes)
-        make_action("action_filter_wires", None, self.on_filter_wires)
-        make_action("action_filter_sources", None, self.on_filter_sources)
-        make_action("action_filter_resistors", None, self.on_filter_resistors)
-        make_action("action_filter_capacitors", None, self.on_filter_capacitors)
-        make_action("action_filter_inductors", None, self.on_filter_inductors)
-        make_action("action_filter_add", None, self.on_filter_add)
-       
-       # Edit Actions 
-        make_action("action_invert_x", None, self.on_invert_x)
-        make_action("action_invert_y", None, self.on_invert_y)
-        make_action("action_invert_xy", None, self.on_invert_xy)
-        
-        make_action("action_align_left", None, self.on_align_left)
-        make_action("action_align_right", None, self.on_align_right)
-        make_action("action_align_top", None, self.on_align_top)
-        make_action("action_align_bottom", None, self.on_align_bottom)
-        make_action("action_distribute_horiz", None, self.on_distribute_horiz)
-        make_action("action_distribute_vertic", None, self.on_distribute_vertic)
-        
-        make_action("action_group", None, self.on_group_items)
-        make_action("action_ungroup", None, self.on_ungroup_items)
-        make_action("action_clean", None, self.on_clean_canvas)
+    def _make_action(self, key, shortcut=None, slot=None):
+        action = QAction('', self)
+        if shortcut:
+            action.setShortcut(shortcut)
+        if slot:
+            action.triggered.connect(slot)
+        # The action is stored in the dictionary with its translation key as its ID
+        self.custom_actions[key] = action
+        return action
 
-        # View Actions
-        make_action("action_toggle_grid", None, self.on_toggle_grid)
-        make_action("action_snap_grid", None, self.on_snap_grid)
-        make_action("action_grid_size", None, self.on_grid_size)
-        
-        make_action("action_show_labels", None, self.on_toggle_labels)
-        make_action("action_show_nodes", None, self.on_toggle_nodes)
-        make_action("action_show_wire_dir", None, self.on_toggle_wire_dir)
-        
-        make_action("action_center_select", None, self.on_center_selection)
-        make_action("action_reset_zoom", None, self.on_reset_zoom)
-        make_action("action_fullscreen", None, self.on_toggle_fullscreen)
-        make_action("action_highlight_short", None, self.on_highlight_short_circuit)
-        make_action("action_show_components", None, self.on_toggle_view_components)
-        make_action("action_show_sim", None, self.on_toggle_view_simulation)
-        make_action("action_show_graphs", None, self.on_toggle_view_graphs)
-        make_action("action_show_examples", None, self.on_toggle_view_examples)
-        make_action("action_show_toolbar", None, self.on_toggle_view_toolbar)
-        make_action("action_theme_dark", None, self.set_dark_mode)
-        make_action("action_theme_light", None, self.set_light_mode)
+    def _create_file_actions(self):
+        self._make_action("action_new_file", "Ctrl+N", self.on_new_file)
+        self._make_action("action_new_window", "Ctrl+Shift+N", self.on_new_window)
+        self._make_action("action_open", "Ctrl+O", self.on_open_file)
+        self._make_action("action_save", "Ctrl+S", self.on_save_file)
+        self._make_action("action_save_as", "Ctrl+Shift+S", self.on_save_as)
+        self._make_action("action_import", None, self.on_import)
+        self._make_action("action_export", None, self.on_export)
+        self._make_action("action_history", None, self.on_version_history)
+        self._make_action("action_quit", "Ctrl+Q", self.close)
 
-        # Options Actions
-        make_action("action_auto_save_int", None, lambda: print("Auto-save Int"))
-        make_action("action_toggle_auto_save", None, lambda: print("Toggle Auto-save"))
-        make_action("action_lang_fr", None, self.set_lang_fr)
-        make_action("action_lang_en", None, self.set_lang_en)
-        make_action("action_restore_session", None, self.on_restore_session)
+    def _create_edit_actions(self):
+        self._make_action("action_select_all", "Ctrl+A", self.on_select_all)
+        self._make_action("action_select_none", "Ctrl+D", self.on_select_none)
+        self._make_action("action_select_invert", "Ctrl+I", self.on_select_invert)
+        self._make_action("action_filter_nodes", None, self.on_filter_nodes)
+        self._make_action("action_filter_wires", None, self.on_filter_wires)
+        self._make_action("action_filter_sources", None, self.on_filter_sources)
+        self._make_action("action_filter_resistors", None, self.on_filter_resistors)
+        self._make_action("action_filter_capacitors", None, self.on_filter_capacitors)
+        self._make_action("action_filter_inductors", None, self.on_filter_inductors)
+        self._make_action("action_filter_add", None, self.on_filter_add)
 
-        make_action("action_unit_si", None, self.on_set_unit_si)
-        make_action("action_unit_eng", None, self.on_set_unit_eng)
-        make_action("action_unit_compact", None, self.on_set_unit_compact)
-        
-        make_action("action_precision", None, self.on_set_precision)
-        make_action("action_sci_notation", None, self.on_toggle_sci_notation)
-        make_action("action_cross_cursor", None, self.on_toggle_cross_cursor)
-        make_action("action_enable_anim", None, self.on_toggle_animations)
-        make_action("action_allow_overlap", None, self.on_toggle_overlap)
-        make_action("action_disable_editing", None, self.on_toggle_editing)
-        make_action("action_conv_current", None, self.on_toggle_conv_current)
+        self._make_action("action_invert_x", None, self.on_invert_x)
+        self._make_action("action_invert_y", None, self.on_invert_y)
+        self._make_action("action_invert_xy", None, self.on_invert_xy)
 
-        make_action("action_grid_export", None, self.on_toggle_grid_export)
-        make_action("action_sim_export", None, self.on_toggle_sim_export)
-        make_action("action_bg_color", None, self.on_change_bg_color)
-        make_action("action_keybinds", None, self.on_show_keybinds)
+        self._make_action("action_align_left", None, self.on_align_left)
+        self._make_action("action_align_right", None, self.on_align_right)
+        self._make_action("action_align_top", None, self.on_align_top)
+        self._make_action("action_align_bottom", None, self.on_align_bottom)
+        self._make_action("action_distribute_horiz", None, self.on_distribute_horiz)
+        self._make_action("action_distribute_vertic", None, self.on_distribute_vertic)
 
-        make_action("action_color_pos", None, self.on_set_color_positive)
-        make_action("action_color_neg", None, self.on_set_color_negative)
-        make_action("action_color_neu", None, self.on_set_color_neutral)
-        make_action("action_color_sel", None, self.on_set_color_selected)
-        make_action("action_color_cur", None, self.on_set_color_current)
-        
-        # Simulation Actions
+        self._make_action("action_group", None, self.on_group_items)
+        self._make_action("action_ungroup", None, self.on_ungroup_items)
+        self._make_action("action_clean", None, self.on_clean_canvas)
+
+    def _create_view_actions(self):
+        self._make_action("action_toggle_grid", None, self.on_toggle_grid)
+        self._make_action("action_snap_grid", None, self.on_snap_grid)
+        self._make_action("action_grid_size", None, self.on_grid_size)
+
+        self._make_action("action_show_labels", None, self.on_toggle_labels)
+        self._make_action("action_show_nodes", None, self.on_toggle_nodes)
+        self._make_action("action_show_wire_dir", None, self.on_toggle_wire_dir)
+
+        self._make_action("action_center_select", None, self.on_center_selection)
+        self._make_action("action_reset_zoom", None, self.on_reset_zoom)
+        self._make_action("action_fullscreen", None, self.on_toggle_fullscreen)
+        self._make_action("action_highlight_short", None, self.on_highlight_short_circuit)
+        self._make_action("action_show_components", None, self.on_toggle_view_components)
+        self._make_action("action_show_sim", None, self.on_toggle_view_simulation)
+        self._make_action("action_show_graphs", None, self.on_toggle_view_graphs)
+        self._make_action("action_show_examples", None, self.on_toggle_view_examples)
+        self._make_action("action_show_toolbar", None, self.on_toggle_view_toolbar)
+        self._make_action("action_theme_dark", None, self.set_dark_mode)
+        self._make_action("action_theme_light", None, self.set_light_mode)
+
+    def _create_options_actions(self):
+        self._make_action("action_auto_save_int", None, lambda: print("Auto-save Int"))
+        self._make_action("action_toggle_auto_save", None, lambda: print("Toggle Auto-save"))
+        self._make_action("action_lang_fr", None, self.set_lang_fr)
+        self._make_action("action_lang_en", None, self.set_lang_en)
+        self._make_action("action_restore_session", None, self.on_restore_session)
+
+        self._make_action("action_unit_si", None, self.on_set_unit_si)
+        self._make_action("action_unit_eng", None, self.on_set_unit_eng)
+        self._make_action("action_unit_compact", None, self.on_set_unit_compact)
+
+        self._make_action("action_precision", None, self.on_set_precision)
+        self._make_action("action_sci_notation", None, self.on_toggle_sci_notation)
+        self._make_action("action_cross_cursor", None, self.on_toggle_cross_cursor)
+        self._make_action("action_enable_anim", None, self.on_toggle_animations)
+        self._make_action("action_allow_overlap", None, self.on_toggle_overlap)
+        self._make_action("action_disable_editing", None, self.on_toggle_editing)
+        self._make_action("action_conv_current", None, self.on_toggle_conv_current)
+
+        self._make_action("action_grid_export", None, self.on_toggle_grid_export)
+        self._make_action("action_sim_export", None, self.on_toggle_sim_export)
+        self._make_action("action_bg_color", None, self.on_change_bg_color)
+        self._make_action("action_keybinds", None, self.on_show_keybinds)
+
+        self._make_action("action_color_pos", None, self.on_set_color_positive)
+        self._make_action("action_color_neg", None, self.on_set_color_negative)
+        self._make_action("action_color_neu", None, self.on_set_color_neutral)
+        self._make_action("action_color_sel", None, self.on_set_color_selected)
+        self._make_action("action_color_cur", None, self.on_set_color_current)
 
     def set_dark_mode(self):
         self.change_theme("dark")
@@ -234,13 +240,18 @@ class MainWindow(QMainWindow):
         self.menu_options = menubar.addMenu('')
         self.menu_simulation = menubar.addMenu('')
         
-        # File Menu
+        self._setup_file_menu()
+        self._setup_edit_menu()
+        self._setup_view_menu()
+        self._setup_options_menu()
+        # Simulation Menu
+
+    def _setup_file_menu(self):
         self.menu_file.addAction(self.custom_actions["action_new_file"])
         self.menu_file.addAction(self.custom_actions["action_new_window"])
         self.menu_file.addSeparator()
         self.menu_file.addAction(self.custom_actions["action_open"])
         self.menu_recent_files = self.menu_file.addMenu('') 
-        # Placeholder
         self.placeholder_recent_files = QAction("example.json", self)
         self.menu_recent_files.addAction(self.placeholder_recent_files)
         self.menu_file.addSeparator()
@@ -254,7 +265,7 @@ class MainWindow(QMainWindow):
         self.menu_file.addSeparator()
         self.menu_file.addAction(self.custom_actions["action_quit"])
 
-        # Edit Menu
+    def _setup_edit_menu(self):
         self.menu_edit.addAction(self.custom_actions["action_select_all"])
         self.menu_edit.addAction(self.custom_actions["action_select_none"])
         self.menu_edit.addAction(self.custom_actions["action_select_invert"])
@@ -267,7 +278,7 @@ class MainWindow(QMainWindow):
         self.menu_selection_filter.addAction(self.custom_actions["action_filter_inductors"])
         self.menu_selection_filter.addAction(self.custom_actions["action_filter_capacitors"])
         self.menu_selection_filter.addAction(self.custom_actions["action_filter_add"])
-        self.menu_file.addSeparator()
+        self.menu_edit.addSeparator()
         
         self.menu_edit.addSeparator()
         self.menu_edit.addAction(self.custom_actions["action_invert_x"])
@@ -292,7 +303,7 @@ class MainWindow(QMainWindow):
         self.menu_edit.addSeparator() 
         self.menu_edit.addAction(self.custom_actions["action_clean"])
 
-        # View Menu
+    def _setup_view_menu(self):
         self.menu_view.addAction(self.custom_actions["action_toggle_grid"])
         self.menu_view.addAction(self.custom_actions["action_snap_grid"])
         self.menu_view.addAction(self.custom_actions["action_grid_size"])
@@ -321,9 +332,8 @@ class MainWindow(QMainWindow):
         
         self.menu_view.addSeparator()
         self.menu_view.addAction(self.custom_actions["action_highlight_short"])
-        
 
-        # Options Menu
+    def _setup_options_menu(self):
         self.menu_options.addAction(self.custom_actions["action_auto_save_int"])
         self.menu_options.addAction(self.custom_actions["action_toggle_auto_save"])
         self.menu_lang = self.menu_options.addMenu('') 
@@ -360,7 +370,6 @@ class MainWindow(QMainWindow):
         self.menu_colors.addAction(self.custom_actions["action_color_neu"])
         self.menu_colors.addAction(self.custom_actions["action_color_sel"])
         self.menu_colors.addAction(self.custom_actions["action_color_cur"])
-        # Simulation Menu
 
 
     def setup_toolbar(self):
@@ -377,34 +386,30 @@ class MainWindow(QMainWindow):
     def retranslateUi(self):
         """Met à jour tous les textes"""
         self.setWindowTitle(Translator.tr("app_title"))
-        
-        # Menus
+        self._retranslate_menus()
+        self._retranslate_actions()
+        self.status_bar.showMessage(Translator.tr("status_ready"))
+
+    def _retranslate_menus(self):
         self.menu_file.setTitle(Translator.tr("menu_file"))
         self.menu_edit.setTitle(Translator.tr("menu_edit"))
         self.menu_view.setTitle(Translator.tr("menu_view"))
         self.menu_options.setTitle(Translator.tr("menu_options"))
         self.menu_simulation.setTitle(Translator.tr("menu_simulation"))
 
-        # File Menu
         self.menu_recent_files.setTitle(Translator.tr("menu_recent_files"))
-
-        # Edit Menu
         self.menu_selection_filter.setTitle(Translator.tr("menu_selection_filter"))
-
         self.menu_align.setTitle(Translator.tr("menu_align"))
         self.menu_show_hide.setTitle(Translator.tr("menu_show_hide"))
         self.menu_units.setTitle(Translator.tr("menu_units"))
         self.menu_colors.setTitle(Translator.tr("menu_colors"))
         self.menu_lang.setTitle(Translator.tr("action_language"))
+        self.menu_theme.setTitle(Translator.tr("menu_theme"))
 
-        # Mise à jour automatique de toutes les actions stockées
+    def _retranslate_actions(self):
         # Le dictionnaire self.custom_actions contient {"cle_traduction": QAction}
         for key, action in self.custom_actions.items():
             action.setText(Translator.tr(key))
-
-        self.status_bar.showMessage(Translator.tr("status_ready"))
-
-        self.menu_theme.setTitle(Translator.tr("menu_theme"))
 
     def change_language(self, lang):
         """Change la langue et rafraîchit l'interface"""
