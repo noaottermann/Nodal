@@ -9,7 +9,7 @@ from view.components_panel import ComponentsPanel
 
 class MainWindow(QMainWindow):
     """
-    Fenêtre principale de l'application OHMIC
+    Main window of OHMIC
     """
     def __init__(self, model=None):
         super().__init__()
@@ -20,7 +20,7 @@ class MainWindow(QMainWindow):
         self.retranslateUi()
 
     def init_ui_structure(self):
-        """Construction des éléments graphiques"""
+        """Create the main UI structure"""
         self._configure_window_geometry()
         
         # Setup
@@ -72,7 +72,7 @@ class MainWindow(QMainWindow):
         self.setup_catalog_panel()
 
     def setup_catalog_panel(self):
-        """Create and attach the left component catalog panel."""
+        """Create and attach the left component catalog panel"""
         self.catalog_widget = ComponentCatalogWidget(self)
         self.catalog_widget.tool_selected.connect(self.set_tool)
 
@@ -86,7 +86,7 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.LeftDockWidgetArea, self.catalog_dock)
 
     def create_actions(self):
-        """Crée toutes les actions de la fenêtre principale"""
+        """Create all actions for the main window"""
         self._create_file_actions()
         self._create_edit_actions()
         self._create_view_actions()
