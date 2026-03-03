@@ -68,6 +68,9 @@ class MainWindow(QMainWindow):
         central_layout.addWidget(self.components_panel)
         central_layout.addWidget(self.view, 1)
         self.setCentralWidget(central_widget)
+        
+        # Set initial focus to the circuit view instead of search bar
+        self.view.setFocus()
 
     def create_actions(self):
         """Create all actions for the main window"""
