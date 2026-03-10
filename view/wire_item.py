@@ -117,7 +117,7 @@ class WireItem(QGraphicsLineItem):
         return False
 
     def apply_scene_delta(self, delta, detach_shared_nodes=False, moved_node_ids=None):
-        """Move a wire via its nodes and snap each endpoint."""
+        """Move a wire via its nodes, with optional endpoint snapping."""
         scene = self.scene()
         if scene is None:
             return
@@ -146,27 +146,39 @@ class WireItem(QGraphicsLineItem):
         if moved_node_ids is None:
             moved_node_ids = set()
 
+        # If nodes were detached, endpoints can snap independently.
+        # Otherwise, attached endpoints must be driven by moved dipoles.
+        should_snap_endpoints = detach_shared_nodes
+
         node_a_id = id(self.wire.node_a)
         if node_a_id not in moved_node_ids:
-            ax += delta.x()
-            ay += delta.y()
-            if shared_a:
-                self.wire.node_a.position = (ax, ay)
+            if shared_a and not detach_shared_nodes:
+                # Keep attachment: the selected dipole updates this node.
+                moved_node_ids.add(node_a_id)
             else:
-                snapped_a = scene.get_snapped_position(QPointF(ax, ay))
-                self.wire.node_a.position = (snapped_a[0], snapped_a[1])
-            moved_node_ids.add(node_a_id)
+                ax += delta.x()
+                ay += delta.y()
+                if should_snap_endpoints:
+                    snapped_a = scene.get_snapped_position(QPointF(ax, ay))
+                    self.wire.node_a.position = (snapped_a[0], snapped_a[1])
+                else:
+                    self.wire.node_a.position = (ax, ay)
+                moved_node_ids.add(node_a_id)
 
         node_b_id = id(self.wire.node_b)
         if node_b_id not in moved_node_ids:
-            bx += delta.x()
-            by += delta.y()
-            if shared_b:
-                self.wire.node_b.position = (bx, by)
+            if shared_b and not detach_shared_nodes:
+                # Keep attachment: the selected dipole updates this node.
+                moved_node_ids.add(node_b_id)
             else:
-                snapped_b = scene.get_snapped_position(QPointF(bx, by))
-                self.wire.node_b.position = (snapped_b[0], snapped_b[1])
-            moved_node_ids.add(node_b_id)
+                bx += delta.x()
+                by += delta.y()
+                if should_snap_endpoints:
+                    snapped_b = scene.get_snapped_position(QPointF(bx, by))
+                    self.wire.node_b.position = (snapped_b[0], snapped_b[1])
+                else:
+                    self.wire.node_b.position = (bx, by)
+                moved_node_ids.add(node_b_id)
 
         self.refresh_geometry()
 
