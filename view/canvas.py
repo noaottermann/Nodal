@@ -436,6 +436,7 @@ class CircuitScene(QGraphicsScene):
 
         if grid_delta.manhattanLength() > 0:
             self._group_move_active = True
+            moved_wire_node_ids = set()
             for item in self.selectedItems():
                 if isinstance(item, ComponentItem):
                     item.setPos(item.pos() + grid_delta)
@@ -444,7 +445,11 @@ class CircuitScene(QGraphicsScene):
                     if selected_component_nodes:
                         if item.wire.node_a in selected_component_nodes or item.wire.node_b in selected_component_nodes:
                             detach = False
-                    item.apply_scene_delta(grid_delta, detach_shared_nodes=detach)
+                    item.apply_scene_delta(
+                        grid_delta,
+                        detach_shared_nodes=detach,
+                        moved_node_ids=moved_wire_node_ids,
+                    )
 
             self._last_grid_pos = current_grid_pos
 

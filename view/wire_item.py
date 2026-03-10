@@ -116,7 +116,7 @@ class WireItem(QGraphicsLineItem):
                 return True
         return False
 
-    def apply_scene_delta(self, delta, detach_shared_nodes=False):
+    def apply_scene_delta(self, delta, detach_shared_nodes=False, moved_node_ids=None):
         """Move a wire via its nodes and snap each endpoint."""
         scene = self.scene()
         if scene is None:
@@ -143,22 +143,30 @@ class WireItem(QGraphicsLineItem):
         ax, ay = self.wire.node_a.position
         bx, by = self.wire.node_b.position
 
-        ax += delta.x()
-        ay += delta.y()
-        bx += delta.x()
-        by += delta.y()
+        if moved_node_ids is None:
+            moved_node_ids = set()
 
-        if shared_a:
-            self.wire.node_a.position = (ax, ay)
-        else:
-            snapped_a = scene.get_snapped_position(QPointF(ax, ay))
-            self.wire.node_a.position = (snapped_a[0], snapped_a[1])
+        node_a_id = id(self.wire.node_a)
+        if node_a_id not in moved_node_ids:
+            ax += delta.x()
+            ay += delta.y()
+            if shared_a:
+                self.wire.node_a.position = (ax, ay)
+            else:
+                snapped_a = scene.get_snapped_position(QPointF(ax, ay))
+                self.wire.node_a.position = (snapped_a[0], snapped_a[1])
+            moved_node_ids.add(node_a_id)
 
-        if shared_b:
-            self.wire.node_b.position = (bx, by)
-        else:
-            snapped_b = scene.get_snapped_position(QPointF(bx, by))
-            self.wire.node_b.position = (snapped_b[0], snapped_b[1])
+        node_b_id = id(self.wire.node_b)
+        if node_b_id not in moved_node_ids:
+            bx += delta.x()
+            by += delta.y()
+            if shared_b:
+                self.wire.node_b.position = (bx, by)
+            else:
+                snapped_b = scene.get_snapped_position(QPointF(bx, by))
+                self.wire.node_b.position = (snapped_b[0], snapped_b[1])
+            moved_node_ids.add(node_b_id)
 
         self.refresh_geometry()
 

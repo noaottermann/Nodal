@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from PyQt5.QtCore import Qt, QSize, QPointF, QMimeData, pyqtSignal
+from PyQt5.QtCore import Qt, QSize, QPointF, QMimeData, pyqtSignal, QEvent
 from PyQt5.QtGui import QIcon, QPixmap, QPainter, QColor, QFont, QDrag
 from PyQt5.QtWidgets import (
 	QWidget,
@@ -13,6 +13,7 @@ from PyQt5.QtWidgets import (
 	QLineEdit,
 	QSizePolicy,
 	QFrame,
+	QApplication,
 )
 
 
@@ -76,12 +77,36 @@ class ComponentsPanel(QWidget):
 		self.category_list.itemClicked.connect(self._on_category_clicked)
 		self.components_list.itemDoubleClicked.connect(self._on_component_double_clicked)
 
+		self._app = QApplication.instance()
+		if self._app is not None:
+			self._app.installEventFilter(self)
+
 		if self.category_list.count() > 0:
 			self.category_list.setCurrentRow(0)
 
 	def resizeEvent(self, event):
 		super().resizeEvent(event)
 		self._sync_category_item_widths()
+
+	def closeEvent(self, event):
+		if self._app is not None:
+			self._app.removeEventFilter(self)
+		super().closeEvent(event)
+
+	def eventFilter(self, watched, event):
+		if event.type() == QEvent.MouseButtonPress:
+			target = None
+			if hasattr(event, "globalPos"):
+				target = QApplication.widgetAt(event.globalPos())
+
+			if target is None or (target is not self and not self.isAncestorOf(target)):
+				self._clear_component_selection()
+
+		return super().eventFilter(watched, event)
+
+	def _clear_component_selection(self):
+		self.components_list.clearSelection()
+		self.components_list.setCurrentRow(-1)
 
 	def _wrap_category_list(self):
 		frame = QFrame()
