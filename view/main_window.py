@@ -131,6 +131,8 @@ class MainWindow(QMainWindow):
         self._make_action("action_clean", None, self.on_clean_canvas)
 
     def _create_view_actions(self):
+        self._make_action("action_zoom_in", "Ctrl++", self.on_zoom_in)
+        self._make_action("action_zoom_out", "Ctrl+-", self.on_zoom_out)
         self._make_action("action_toggle_grid", None, self.on_toggle_grid)
         self._make_action("action_snap_grid", None, self.on_snap_grid)
         self._make_action("action_grid_size", None, self.on_grid_size)
@@ -391,9 +393,9 @@ class MainWindow(QMainWindow):
         toolbar.addAction(self.custom_actions["action_redo"])
 
         toolbar.addSeparator()
-        toolbar.addAction("Zoom In")
-        toolbar.addAction("Zoom Out")
-        toolbar.addAction("Zoom 1:1")
+        toolbar.addAction(self.custom_actions["action_zoom_in"])
+        toolbar.addAction(self.custom_actions["action_zoom_out"])
+        toolbar.addAction(self.custom_actions["action_reset_zoom"])
 
     def retranslateUi(self):
         """Met à jour tous les textes"""
@@ -544,8 +546,17 @@ class MainWindow(QMainWindow):
     def on_center_selection(self):
         print("Action: Centrer la vue sur la sélection")
 
+    def on_zoom_in(self):
+        if hasattr(self, "view"):
+            self.view.scale(1.25, 1.25)
+
+    def on_zoom_out(self):
+        if hasattr(self, "view"):
+            self.view.scale(0.8, 0.8)
+
     def on_reset_zoom(self):
-        print("Action: Réinitialiser le zoom")
+        if hasattr(self, "view"):
+            self.view.resetTransform()
 
     def on_toggle_fullscreen(self):
         print("Action: Basculer le mode plein écran")
