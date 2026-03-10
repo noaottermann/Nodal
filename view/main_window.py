@@ -196,6 +196,8 @@ class MainWindow(QMainWindow):
         """Définit les raccourcis clavier globaux"""
         self.shortcut_undo = QShortcut(QKeySequence.Undo, self)
         self.shortcut_undo.activated.connect(self.undo_last_action)
+        self.shortcut_redo = QShortcut(QKeySequence.Redo, self)
+        self.shortcut_redo.activated.connect(self.redo_last_action)
         
         # Delete key
         self.shortcut_delete = QShortcut(QKeySequence("Del"), self)
@@ -651,3 +653,8 @@ class MainWindow(QMainWindow):
         """Annule la dernière action modifiant le circuit."""
         if hasattr(self, 'scene'):
             self.scene.undo_last_action()
+
+    def redo_last_action(self):
+        """Rétablit la dernière action annulée."""
+        if hasattr(self, 'scene'):
+            self.scene.redo_last_action()

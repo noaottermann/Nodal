@@ -228,6 +228,7 @@ class CircuitScene(QGraphicsScene):
 
         # Undo state (stores full circuit snapshots before edits)
         self._undo_stack = []
+        self._redo_stack = []
         self._max_undo_steps = 100
         self._component_classes = {
             "Resistor": Resistor,
@@ -248,6 +249,8 @@ class CircuitScene(QGraphicsScene):
         snapshot = self.model.to_json()
         if self._undo_stack and self._undo_stack[-1] == snapshot:
             return
+        # New user edits invalidate redo history.
+        self._redo_stack.clear()
         self._undo_stack.append(snapshot)
         if len(self._undo_stack) > self._max_undo_steps:
             self._undo_stack.pop(0)
@@ -257,11 +260,33 @@ class CircuitScene(QGraphicsScene):
         if self.model is None or not self._undo_stack:
             return False
 
+        current_snapshot = self.model.to_json()
         previous_snapshot = self._undo_stack.pop()
+        self._redo_stack.append(current_snapshot)
         self.model.load_from_json(previous_snapshot, self._component_classes)
         self.refresh_from_model()
 
         # Reset transient interaction state after restore
+        self.cancel_wire_drawing()
+        self._reset_press_state()
+        self.clearSelection()
+        self._group_move_active = False
+        return True
+
+    def redo_last_action(self):
+        """Reapply the most recently undone snapshot."""
+        if self.model is None or not self._redo_stack:
+            return False
+
+        current_snapshot = self.model.to_json()
+        next_snapshot = self._redo_stack.pop()
+        self._undo_stack.append(current_snapshot)
+        if len(self._undo_stack) > self._max_undo_steps:
+            self._undo_stack.pop(0)
+
+        self.model.load_from_json(next_snapshot, self._component_classes)
+        self.refresh_from_model()
+
         self.cancel_wire_drawing()
         self._reset_press_state()
         self.clearSelection()
