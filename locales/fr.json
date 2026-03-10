@@ -14,6 +14,8 @@
     "action_import": "Importer",
     "action_export": "Exporter",
     "action_history": "Historique",
+    "action_undo": "Annuler",
+    "action_redo": "Rétablir",
     "action_quit": "Quitter",
     "action_select_all": "Tout sélectionner",
     "action_select_none": "Tout désélectionner",

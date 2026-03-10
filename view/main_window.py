@@ -101,6 +101,9 @@ class MainWindow(QMainWindow):
         self._make_action("action_quit", "Ctrl+Q", self.close)
 
     def _create_edit_actions(self):
+        self._make_action("action_undo", QKeySequence.Undo, self.undo_last_action)
+        self._make_action("action_redo", QKeySequence.Redo, self.redo_last_action)
+
         self._make_action("action_select_all", "Ctrl+A", self.on_select_all)
         self._make_action("action_select_none", "Ctrl+D", self.on_select_none)
         self._make_action("action_select_invert", "Ctrl+I", self.on_select_invert)
@@ -194,11 +197,7 @@ class MainWindow(QMainWindow):
 
     def create_shortcuts(self):
         """Définit les raccourcis clavier globaux"""
-        self.shortcut_undo = QShortcut(QKeySequence.Undo, self)
-        self.shortcut_undo.activated.connect(self.undo_last_action)
-        self.shortcut_redo = QShortcut(QKeySequence.Redo, self)
-        self.shortcut_redo.activated.connect(self.redo_last_action)
-        
+
         # Delete key
         self.shortcut_delete = QShortcut(QKeySequence("Del"), self)
         self.shortcut_delete.activated.connect(self.delete_selected_items)
@@ -274,6 +273,10 @@ class MainWindow(QMainWindow):
         self.menu_file.addAction(self.custom_actions["action_quit"])
 
     def _setup_edit_menu(self):
+        self.menu_edit.addAction(self.custom_actions["action_undo"])
+        self.menu_edit.addAction(self.custom_actions["action_redo"])
+        self.menu_edit.addSeparator()
+
         self.menu_edit.addAction(self.custom_actions["action_select_all"])
         self.menu_edit.addAction(self.custom_actions["action_select_none"])
         self.menu_edit.addAction(self.custom_actions["action_select_invert"])
@@ -383,9 +386,10 @@ class MainWindow(QMainWindow):
     def setup_toolbar(self):
         toolbar = QToolBar("Barre d'outils principale")
         self.addToolBar(toolbar)
-        
-        toolbar.addAction("Undo")
-        toolbar.addAction("Redo")
+
+        toolbar.addAction(self.custom_actions["action_undo"])
+        toolbar.addAction(self.custom_actions["action_redo"])
+
         toolbar.addSeparator()
         toolbar.addAction("Zoom In")
         toolbar.addAction("Zoom Out")
