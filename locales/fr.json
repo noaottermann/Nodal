@@ -48,6 +48,8 @@
     "menu_show_hide": "Afficher/Masquer les fenêtres",
     "action_zoom_in": "Zoom avant",
     "action_zoom_out": "Zoom arrière",
+    "action_rotate": "Rotation",
+    "action_flip": "Retourner",
     "action_toggle_grid": "Afficher la grille",
     "action_snap_grid": "Aimanter à la grille",
     "action_grid_size": "Taille de la grille...",

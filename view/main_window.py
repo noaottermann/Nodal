@@ -55,6 +55,7 @@ class MainWindow(QMainWindow):
     def _setup_central_widget(self):
         self.scene = CircuitScene(self.model)
         self.view = CircuitView(self.scene)
+        self.scene.selectionChanged.connect(self._update_transform_actions_visibility)
 
         self.components_panel = ComponentsPanel()
         self.components_panel.setMinimumWidth(200)
@@ -68,9 +69,66 @@ class MainWindow(QMainWindow):
         central_layout.addWidget(self.components_panel)
         central_layout.addWidget(self.view, 1)
         self.setCentralWidget(central_widget)
+
+        # Anchor toolbar to the central area so its geometry follows panel/view sizes.
+        if hasattr(self, "toolbar"):
+            self.toolbar.setParent(central_widget)
+            self.toolbar.show()
+            self._update_toolbar_geometry()
+            self._update_transform_actions_visibility()
         
         # Set initial focus to the circuit view instead of search bar
         self.view.setFocus()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._update_toolbar_geometry()
+
+    def _update_toolbar_geometry(self):
+        if not hasattr(self, "toolbar") or self.toolbar is None:
+            return
+        if self.centralWidget() is None:
+            return
+
+        central_widget = self.centralWidget()
+        content_width = central_widget.width()
+        content_height = central_widget.height()
+        if content_width <= 0 or content_height <= 0:
+            return
+
+        panel_width = 0
+        if hasattr(self, "components_panel") and self.components_panel.isVisible():
+            panel_width = self.components_panel.width()
+
+        x = min(panel_width, max(0, content_width - 1))
+        remaining_width = content_width - x
+        if remaining_width <= 0:
+            return
+
+        desired_width = content_width - (2 * panel_width)
+        min_width = min(280, remaining_width)
+        toolbar_width = max(min_width, desired_width)
+        toolbar_width = min(toolbar_width, remaining_width)
+
+        toolbar_height = max(self.toolbar.sizeHint().height(), 44)
+        y = max(8, content_height - toolbar_height - 12)
+
+        self.toolbar.setGeometry(x, y, toolbar_width, toolbar_height)
+        self.toolbar.raise_()
+
+    def _update_transform_actions_visibility(self):
+        if not hasattr(self, "scene"):
+            return
+
+        selected_items = self.scene.selectedItems()
+        has_dipole = any(hasattr(item, "component") for item in selected_items)
+
+        if "action_rotate" in self.custom_actions:
+            self.custom_actions["action_rotate"].setVisible(has_dipole)
+        if "action_flip" in self.custom_actions:
+            self.custom_actions["action_flip"].setVisible(has_dipole)
+        if hasattr(self, "toolbar_transform_separator") and self.toolbar_transform_separator is not None:
+            self.toolbar_transform_separator.setVisible(has_dipole)
 
     def create_actions(self):
         """Create all actions for the main window"""
@@ -103,6 +161,8 @@ class MainWindow(QMainWindow):
     def _create_edit_actions(self):
         self._make_action("action_undo", QKeySequence.Undo, self.undo_last_action)
         self._make_action("action_redo", QKeySequence.Redo, self.redo_last_action)
+        self._make_action("action_rotate", None, self.rotate_selected_components)
+        self._make_action("action_flip", None, self.flip_selected_components)
 
         self._make_action("action_select_all", "Ctrl+A", self.on_select_all)
         self._make_action("action_select_none", "Ctrl+D", self.on_select_none)
@@ -386,16 +446,39 @@ class MainWindow(QMainWindow):
 
 
     def setup_toolbar(self):
-        toolbar = QToolBar("Barre d'outils principale")
-        self.addToolBar(toolbar)
+        self.toolbar = QToolBar("Barre d'outils principale", self)
+        self.toolbar.setObjectName("mainToolbar")
+        self.toolbar.setMovable(False)
+        self.toolbar.setFloatable(False)
+        self.toolbar.setStyleSheet(
+            """
+            QToolBar#mainToolbar {
+                spacing: 6px;
+                padding: 6px 8px;
+            }
+            QToolBar#mainToolbar QToolButton {
+                min-height: 32px;
+                padding: 4px 10px;
+            }
+            """
+        )
+        self.toolbar.setVisible(False)
 
-        toolbar.addAction(self.custom_actions["action_undo"])
-        toolbar.addAction(self.custom_actions["action_redo"])
+        self.toolbar.addAction(self.custom_actions["action_undo"])
+        self.toolbar.addAction(self.custom_actions["action_redo"])
 
-        toolbar.addSeparator()
-        toolbar.addAction(self.custom_actions["action_zoom_in"])
-        toolbar.addAction(self.custom_actions["action_zoom_out"])
-        toolbar.addAction(self.custom_actions["action_reset_zoom"])
+        self.toolbar.addSeparator()
+        self.toolbar.addAction(self.custom_actions["action_zoom_in"])
+        self.toolbar.addAction(self.custom_actions["action_zoom_out"])
+        self.toolbar.addAction(self.custom_actions["action_reset_zoom"])
+
+        self.toolbar_transform_separator = self.toolbar.addSeparator()
+        self.toolbar.addAction(self.custom_actions["action_rotate"])
+        self.toolbar.addAction(self.custom_actions["action_flip"])
+
+        self.custom_actions["action_rotate"].setVisible(False)
+        self.custom_actions["action_flip"].setVisible(False)
+        self.toolbar_transform_separator.setVisible(False)
 
     def retranslateUi(self):
         """Met à jour tous les textes"""
@@ -568,6 +651,7 @@ class MainWindow(QMainWindow):
         if hasattr(self, "components_panel"):
             is_visible = self.components_panel.isVisible()
             self.components_panel.setVisible(not is_visible)
+            self._update_toolbar_geometry()
 
     def on_toggle_view_simulation(self):
         print("Fenêtre: Simulation")
@@ -673,3 +757,11 @@ class MainWindow(QMainWindow):
         """Rétablit la dernière action annulée."""
         if hasattr(self, 'scene'):
             self.scene.redo_last_action()
+
+    def rotate_selected_components(self):
+        if hasattr(self, "scene"):
+            self.scene.rotate_selected_components(90)
+
+    def flip_selected_components(self):
+        if hasattr(self, "scene"):
+            self.scene.rotate_selected_components(180)

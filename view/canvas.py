@@ -696,6 +696,24 @@ class CircuitScene(QGraphicsScene):
         # Reset visuals
         wire_item.refresh_geometry()
 
+    def rotate_selected_components(self, angle_degrees):
+        """Rotate selected dipoles by the given angle and refresh connected wires."""
+        selected_components = [
+            item for item in self.selectedItems() if isinstance(item, ComponentItem)
+        ]
+        if not selected_components:
+            return False
+
+        self._push_undo_snapshot()
+
+        for item in selected_components:
+            new_rotation = (item.rotation() + angle_degrees) % 360
+            item.setRotation(new_rotation)
+            item.component.rotation = float(new_rotation)
+            self.update_wires_connected_to(item.component, item.pos(), new_rotation)
+
+        return True
+
     def delete_selection(self):
         """Delete all selected items."""
         selected = self.selectedItems()

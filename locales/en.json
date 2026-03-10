@@ -48,6 +48,8 @@
     "menu_show_hide": "Show/Hide Windows",
     "action_zoom_in": "Zoom In",
     "action_zoom_out": "Zoom Out",
+    "action_rotate": "Rotate",
+    "action_flip": "Flip",
     "action_toggle_grid": "Toggle Grid On/Off",
     "action_snap_grid": "Snap to Grid",
     "action_grid_size": "Grid Size...",
