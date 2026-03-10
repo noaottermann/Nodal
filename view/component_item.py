@@ -17,6 +17,9 @@ class ComponentItem(QGraphicsItem):
 
         self._press_scene_pos = None
         self._drag_started = False
+        self._is_rotating = False
+        self._rotate_start_angle = 0.0
+        self._rotate_start_rotation = 0.0
         
         # Interaction settings
         self.setFlags(
@@ -66,6 +69,12 @@ class ComponentItem(QGraphicsItem):
         """
         Called when the component is released after a move.
         """
+        if self._is_rotating and event.button() == Qt.RightButton:
+            self._is_rotating = False
+            if self.scene():
+                self.scene().handle_component_move(self)
+            event.accept()
+            return
         super().mouseReleaseEvent(event)
 
         self._drag_started = False
@@ -76,11 +85,35 @@ class ComponentItem(QGraphicsItem):
             self.scene().handle_component_move(self)
 
     def mousePressEvent(self, event):
+        if event.button() == Qt.RightButton:
+            center = self.mapToScene(QPointF(0, 0))
+            dx = event.scenePos().x() - center.x()
+            dy = event.scenePos().y() - center.y()
+            self._rotate_start_angle = math.degrees(math.atan2(dy, dx))
+            self._rotate_start_rotation = self.rotation()
+            self._is_rotating = True
+            if self.scene() and hasattr(self.scene(), "_push_undo_snapshot"):
+                self.scene()._push_undo_snapshot()
+            event.accept()
+            return
         self._press_scene_pos = event.scenePos()
         self._drag_started = False
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
+        if self._is_rotating:
+            center = self.mapToScene(QPointF(0, 0))
+            dx = event.scenePos().x() - center.x()
+            dy = event.scenePos().y() - center.y()
+            current_angle = math.degrees(math.atan2(dy, dx))
+            delta = current_angle - self._rotate_start_angle
+            new_rotation = (self._rotate_start_rotation + delta) % 360
+            self.setRotation(new_rotation)
+            self.component.rotation = float(new_rotation)
+            if self.scene():
+                self.scene().update_wires_connected_to(self.component, self.pos(), new_rotation)
+            event.accept()
+            return
         if not self._drag_started and self._press_scene_pos is not None:
             drag_distance = (event.scenePos() - self._press_scene_pos).manhattanLength()
             if drag_distance < QApplication.startDragDistance():
@@ -133,6 +166,7 @@ class ComponentItem(QGraphicsItem):
         painter.drawEllipse(QPointF(-30, 0), 2, 2)
         painter.setBrush(Qt.black)
         painter.drawEllipse(QPointF(30, 0), 2, 2)
+
 
     def draw_labels(self, painter):
         """Draw the name and primary value."""
