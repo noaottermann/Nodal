@@ -15,7 +15,6 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.model = model
         self.custom_actions = {}
-        # Position x, y, Largeur, Hauteur
         self.init_ui_structure()
         self.retranslateUi()
 
@@ -111,7 +110,7 @@ class MainWindow(QMainWindow):
         toolbar_width = min(toolbar_width, remaining_width)
 
         toolbar_height = max(self.toolbar.sizeHint().height(), 44)
-        y = max(8, content_height - toolbar_height - 12)
+        y = max(0, content_height - toolbar_height)
 
         self.toolbar.setGeometry(x, y, toolbar_width, toolbar_height)
         self.toolbar.raise_()
