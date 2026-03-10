@@ -218,15 +218,55 @@ class CircuitScene(QGraphicsScene):
 
         # Temporary state for wire drawing
         self.drawing_wire = False
+        self.temp_wire_item = None
+        self.start_pos = (0, 0)
         self._group_move_active = False
         self._drag_started_on_item = False
         self._press_scene_pos = None
         self._suppress_move_until_release = False
         self._selection_snapshot = None
 
+        # Undo state (stores full circuit snapshots before edits)
+        self._undo_stack = []
+        self._max_undo_steps = 100
+        self._component_classes = {
+            "Resistor": Resistor,
+            "VoltageSourceDC": VoltageSourceDC,
+            "VoltageSourceAC": VoltageSourceAC,
+            "Capacitor": Capacitor,
+            "Inductor": Inductor,
+        }
+
     def set_tool(self, tool_name):
         """Set the active tool name."""
         self.current_tool = tool_name
+
+    def _push_undo_snapshot(self):
+        """Store the current circuit state before a mutating action."""
+        if self.model is None:
+            return
+        snapshot = self.model.to_json()
+        if self._undo_stack and self._undo_stack[-1] == snapshot:
+            return
+        self._undo_stack.append(snapshot)
+        if len(self._undo_stack) > self._max_undo_steps:
+            self._undo_stack.pop(0)
+
+    def undo_last_action(self):
+        """Restore the most recent snapshot from the undo stack."""
+        if self.model is None or not self._undo_stack:
+            return False
+
+        previous_snapshot = self._undo_stack.pop()
+        self.model.load_from_json(previous_snapshot, self._component_classes)
+        self.refresh_from_model()
+
+        # Reset transient interaction state after restore
+        self.cancel_wire_drawing()
+        self._reset_press_state()
+        self.clearSelection()
+        self._group_move_active = False
+        return True
 
     def drawBackground(self, painter, rect):
         """Draw the background point grid for alignment."""
@@ -435,6 +475,8 @@ class CircuitScene(QGraphicsScene):
         grid_delta = current_grid_pos - self._last_grid_pos
 
         if grid_delta.manhattanLength() > 0:
+            if not self._group_move_active:
+                self._push_undo_snapshot()
             self._group_move_active = True
             moved_wire_node_ids = set()
             for item in self.selectedItems():
@@ -465,13 +507,15 @@ class CircuitScene(QGraphicsScene):
             if isinstance(item, ComponentItem):
                 self.handle_component_move(item)
             elif isinstance(item, WireItem):
-                self.handle_wire_move(item)
+                self.handle_wire_move(item, record_undo=False)
         self._group_move_active = False
         event.accept()
         return True
 
     def add_component_at(self, tool_type, x, y):
         """Create a component at the given position."""
+        self._push_undo_snapshot()
+
         node_a = self.model.create_node(x - 30, y)
         node_b = self.model.create_node(x + 30, y)
         
@@ -538,6 +582,9 @@ class CircuitScene(QGraphicsScene):
         if start_x == x and start_y == y:
             return
 
+        # Register wire creation as its own undoable action.
+        self._push_undo_snapshot()
+
         # Find or create the start node
         node_a = self.model.get_node_at(start_x, start_y)
         if not node_a:
@@ -592,10 +639,12 @@ class CircuitScene(QGraphicsScene):
             self.temp_wire_item = None
         self.drawing_wire = False
 
-    def handle_wire_move(self, wire_item):
+    def handle_wire_move(self, wire_item, record_undo=True):
         """
         Update the model and reset the visuals after a wire move.
         """
+        if record_undo:
+            self._push_undo_snapshot()
         
         # Compute absolute positions
         raw_pos_a = wire_item.handle_a.scenePos()
@@ -624,7 +673,13 @@ class CircuitScene(QGraphicsScene):
 
     def delete_selection(self):
         """Delete all selected items."""
-        for item in self.selectedItems():
+        selected = self.selectedItems()
+        if not selected:
+            return
+
+        self._push_undo_snapshot()
+
+        for item in selected:
             # Remove from the model
             if hasattr(item, 'component'):
                 dipole_id = item.component.id

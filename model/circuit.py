@@ -102,6 +102,7 @@ class Circuit:
             "version": "1.0",
             "next_node_id": self._next_node_id,
             "next_dipole_id": self._next_dipole_id,
+            "next_wire_id": self._next_wire_id,
             "nodes": [n.to_dict() for n in self.nodes.values()],
             "wires": [w.to_dict() for w in self.wires.values()],
             "dipoles": [d.to_dict() for d in self.dipoles.values()]

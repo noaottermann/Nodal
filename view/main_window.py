@@ -194,6 +194,8 @@ class MainWindow(QMainWindow):
 
     def create_shortcuts(self):
         """Définit les raccourcis clavier globaux"""
+        self.shortcut_undo = QShortcut(QKeySequence.Undo, self)
+        self.shortcut_undo.activated.connect(self.undo_last_action)
         
         # Delete key
         self.shortcut_delete = QShortcut(QKeySequence("Del"), self)
@@ -644,3 +646,8 @@ class MainWindow(QMainWindow):
         # On vérifie que la scène existe
         if hasattr(self, 'scene'):
             self.scene.delete_selection()
+
+    def undo_last_action(self):
+        """Annule la dernière action modifiant le circuit."""
+        if hasattr(self, 'scene'):
+            self.scene.undo_last_action()
