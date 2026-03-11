@@ -246,6 +246,8 @@ class CircuitScene(QGraphicsScene):
         """Definit le nom de l'outil actif"""
         if tool_name != "wire" and self.drawing_wire:
             self.cancel_wire_drawing()
+        if tool_name != "pointer":
+            self.clearSelection()
         self.current_tool = tool_name
         self._update_node_cursors(tool_name)
 
