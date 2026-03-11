@@ -1,62 +1,6 @@
-from PyQt5.QtWidgets import QGraphicsLineItem, QGraphicsRectItem, QGraphicsItem
-from PyQt5.QtGui import QPen, QColor, QBrush, QPainterPath, QPainterPathStroker
+from PyQt5.QtWidgets import QGraphicsLineItem, QGraphicsItem
+from PyQt5.QtGui import QPen, QColor, QPainterPath, QPainterPathStroker
 from PyQt5.QtCore import Qt, QPointF, QLineF
-
-class WireHandle(QGraphicsRectItem):
-    def __init__(self, parent_wire):
-        # Carre 8x8 centre
-        super().__init__(-4, -4, 8, 8, parent=parent_wire)
-        self.parent_wire = parent_wire
-        
-        self.setBrush(QBrush(Qt.white))
-        self.setPen(QPen(Qt.black, 1))
-        
-        self.setFlags(QGraphicsItem.ItemSendsGeometryChanges)
-        self.setZValue(2)  # Toujours au-dessus du fil
-        self.setCursor(Qt.PointingHandCursor)
-        self.setVisible(False)
-        
-        # Etat du glisser
-        self._is_dragging = False
-
-    def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self._is_dragging = True
-            # Capture la souris pour continuer a recevoir les evenements de deplacement
-            event.accept() 
-        else:
-            super().mousePressEvent(event)
-
-    def mouseMoveEvent(self, event):
-        if self._is_dragging:
-            # Position de la souris
-            mouse_scene_pos = self.mapToScene(event.pos())
-            
-            # Aimantation
-            target_pos = self.scene().get_snapped_position(mouse_scene_pos)
-            target_pos = QPointF(*target_pos)
-
-            # Convertit en coordonnees locales du parent
-            new_pos_in_parent = self.parentItem().mapFromScene(target_pos)
-            
-            # Applique le deplacement
-            self.setPos(new_pos_in_parent)
-            
-            # Met a jour le visuel
-            self.parent_wire.update_line_visuals()
-            event.accept()
-        else:
-            super().mouseMoveEvent(event)
-
-    def mouseReleaseEvent(self, event):
-        if self._is_dragging:
-            self._is_dragging = False
-            # Fin du deplacement : laisse la scene finaliser l'aimantation et les mises a jour modele
-            self.scene().handle_wire_move(self.parent_wire)
-            event.accept()
-        else:
-            super().mouseReleaseEvent(event)
-
 
 class WireItem(QGraphicsLineItem):
     def __init__(self, wire_model):
@@ -67,15 +11,12 @@ class WireItem(QGraphicsLineItem):
         self.setFlags(QGraphicsItem.ItemIsSelectable | 
                       QGraphicsItem.ItemIsMovable | 
                       QGraphicsItem.ItemSendsGeometryChanges)
-        self.setZValue(0)  # Fil sous les poignees
-        
-        self.handle_a = WireHandle(self)
-        self.handle_b = WireHandle(self)
+        self.setZValue(0)
         
         self.refresh_geometry()
 
     def refresh_geometry(self):
-        """Reinitialise le fil et les poignees a partir des coordonnees du modele"""
+        """Reinitialise le fil a partir des coordonnees du modele"""
         if not self.wire.node_a or not self.wire.node_b:
             return
 
@@ -87,14 +28,8 @@ class WireItem(QGraphicsLineItem):
         p1 = QPointF(*self.wire.node_a.position)
         p2 = QPointF(*self.wire.node_b.position)
 
-        # Place les elements a ces coordonnees
-        self.handle_a.setPos(p1)
-        self.handle_b.setPos(p2)
+        # Place la ligne a ces coordonnees
         self.setLine(QLineF(p1, p2))
-
-    def update_line_visuals(self):
-        """Met a jour uniquement la ligne entre les poignees"""
-        self.setLine(QLineF(self.handle_a.pos(), self.handle_b.pos()))
 
     def shape(self):
         """Retourne une zone de clic plus epaisse pour faciliter la selection du fil"""
@@ -114,7 +49,7 @@ class WireItem(QGraphicsLineItem):
                 return True
         return False
 
-    def apply_scene_delta(self, delta, detach_shared_nodes=False, moved_node_ids=None):
+    def apply_scene_delta(self, delta, detach_shared_nodes=False, moved_node_ids=None, snap_endpoints=True):
         """Deplace un fil via ses noeuds avec aimantation optionnelle des extremites"""
         scene = self.scene()
         if scene is None:
@@ -146,7 +81,7 @@ class WireItem(QGraphicsLineItem):
 
         # Si les noeuds ont ete detaches, les extremites peuvent s'aimanter independamment
         # Sinon les extremites attachees doivent etre pilotees par les dipoles deplaces
-        should_snap_endpoints = detach_shared_nodes
+        should_snap_endpoints = detach_shared_nodes and snap_endpoints
 
         node_a_id = id(self.wire.node_a)
         if node_a_id not in moved_node_ids:
@@ -180,6 +115,9 @@ class WireItem(QGraphicsLineItem):
 
         self.refresh_geometry()
 
+        if hasattr(scene, "_sync_free_node_items_from_model"):
+            scene._sync_free_node_items_from_model()
+
     def itemChange(self, change, value):
         # Aimantation de position
         if change == QGraphicsItem.ItemPositionChange and self.scene():
@@ -191,22 +129,17 @@ class WireItem(QGraphicsLineItem):
 
         # Visuels de selection
         if change == QGraphicsItem.ItemSelectedChange:
-            # Evite les cycles itemChange inutiles
             is_selected = bool(value)
-            if self.handle_a.isVisible() != is_selected:
-                self.handle_a.setVisible(is_selected)
-                self.handle_b.setVisible(is_selected)
-                
-                pen = self.pen()
-                if is_selected:
-                    pen.setColor(QColor("#0078d7"))
-                    pen.setStyle(Qt.DashLine)
-                    self.setZValue(1) 
-                else:
-                    pen.setColor(Qt.black)
-                    pen.setStyle(Qt.SolidLine)
-                    self.setZValue(0)
-                self.setPen(pen)
+            pen = self.pen()
+            if is_selected:
+                pen.setColor(QColor("#0078d7"))
+                pen.setStyle(Qt.DashLine)
+                self.setZValue(1)
+            else:
+                pen.setColor(Qt.black)
+                pen.setStyle(Qt.SolidLine)
+                self.setZValue(0)
+            self.setPen(pen)
 
         return super().itemChange(change, value)
 
