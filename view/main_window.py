@@ -83,6 +83,16 @@ class MainWindow(QMainWindow):
         super().resizeEvent(event)
         self._update_toolbar_geometry()
 
+    def closeEvent(self, event):
+        # During shutdown, queued Qt signals may still fire while the scene is being deleted.
+        # Disconnect proactively to avoid calling slots on a deleted C++ wrapper.
+        try:
+            if hasattr(self, "scene") and self.scene is not None:
+                self.scene.selectionChanged.disconnect(self._update_transform_actions_visibility)
+        except (RuntimeError, TypeError):
+            pass
+        super().closeEvent(event)
+
     def _update_toolbar_geometry(self):
         if not hasattr(self, "toolbar") or self.toolbar is None:
             return
@@ -119,7 +129,12 @@ class MainWindow(QMainWindow):
         if not hasattr(self, "scene"):
             return
 
-        selected_items = self.scene.selectedItems()
+        try:
+            selected_items = self.scene.selectedItems()
+        except RuntimeError:
+            # Scene wrapper may already be deleted during window close.
+            return
+
         has_dipole = any(hasattr(item, "component") for item in selected_items)
 
         if "action_rotate" in self.custom_actions:
