@@ -17,8 +17,7 @@ class NodeItem(QGraphicsEllipseItem):
         self._drag_offset = QPointF(0, 0)
 
         self.setFlags(
-            QGraphicsItem.ItemIsSelectable
-            | QGraphicsItem.ItemSendsGeometryChanges
+            QGraphicsItem.ItemSendsGeometryChanges
         )
         self.setZValue(3)
         self.setAcceptedMouseButtons(Qt.LeftButton)
@@ -56,10 +55,11 @@ class NodeItem(QGraphicsEllipseItem):
                 self.node.position = (self.pos().x(), self.pos().y())
                 if hasattr(scene, "_refresh_wires_for_node"):
                     scene._refresh_wires_for_node(self.node)
+            event.accept()
+            return
         super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
-        super().mouseReleaseEvent(event)
         if event.button() == Qt.LeftButton:
             self._drag_active = False
             self._undo_snapshot_taken = False
@@ -71,6 +71,9 @@ class NodeItem(QGraphicsEllipseItem):
             scene = self.scene()
             if scene and hasattr(scene, "finalize_node_move"):
                 scene.finalize_node_move(self)
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
 
     def mouseMoveEvent(self, event):
         if self._drag_active:
