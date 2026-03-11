@@ -160,7 +160,6 @@ class ComponentItem(QGraphicsItem):
             painter.setPen(pen)
             painter.drawRect(self.boundingRect())
         self.draw_symbol(painter)
-        self.draw_labels(painter)
         painter.setPen(Qt.NoPen)
         painter.setBrush(Qt.red)
         painter.drawEllipse(QPointF(-30, 0), 2, 2)
