@@ -352,7 +352,7 @@ class CircuitScene(QGraphicsScene):
         """
         if component_model is None:
             return proposed_pos
-        if self._group_move_active:
+        if self._group_move_active and len(self.selectedItems()) > 1:
             return proposed_pos
 
         threshold = 15
