@@ -343,6 +343,48 @@ class CircuitScene(QGraphicsScene):
         
         return self.snap_to_grid(scene_pos)
 
+    def get_smart_snapped_component_position(self, component_model, proposed_pos, rotation):
+        """Return a live-snapped center position for a moving dipole.
+
+        If one terminal gets close to a connectable target (other dipole node or
+        free wire endpoint), adjust the center so that terminal lands exactly on
+        the target while dragging.
+        """
+        if component_model is None:
+            return proposed_pos
+        if self._group_move_active:
+            return proposed_pos
+
+        threshold = 15
+        offset = 30
+        rad = math.radians(rotation)
+        dx = offset * math.cos(rad)
+        dy = offset * math.sin(rad)
+
+        cx, cy = proposed_pos.x(), proposed_pos.y()
+        ax, ay = cx - dx, cy - dy
+        bx, by = cx + dx, cy + dy
+
+        candidate_a = self._find_nearest_external_connectable_node(component_model, ax, ay, threshold)
+        candidate_b = self._find_nearest_external_connectable_node(component_model, bx, by, threshold)
+
+        best = None
+        if candidate_a and candidate_b:
+            best = ("a", candidate_a[0]) if candidate_a[1] <= candidate_b[1] else ("b", candidate_b[0])
+        elif candidate_a:
+            best = ("a", candidate_a[0])
+        elif candidate_b:
+            best = ("b", candidate_b[0])
+
+        if best is None:
+            return proposed_pos
+
+        terminal, target_node = best
+        tx, ty = target_node.position
+        if terminal == "a":
+            return QPointF(tx + dx, ty + dy)
+        return QPointF(tx - dx, ty - dy)
+
     def mousePressEvent(self, event):
         scene_pos = event.scenePos()
         grid_x, grid_y = self._compute_press_grid(scene_pos)
@@ -586,15 +628,15 @@ class CircuitScene(QGraphicsScene):
                     item.refresh_geometry()
 
     def _smart_connect_component_to_nearby_dipole_nodes(self, component_item):
-        """Snap and connect a moved dipole to nearby dipole nodes."""
+        """Snap and connect a moved dipole to nearby dipole nodes or free wire ends."""
         component_model = component_item.component
         threshold = 15
 
-        # Pick the best anchor to nearby external dipole node
+        # Pick the best anchor to nearby connectable node.
         ax, ay = component_model.node_a.position
         bx, by = component_model.node_b.position
-        candidate_a = self._find_nearest_external_dipole_node(component_model, ax, ay, threshold)
-        candidate_b = self._find_nearest_external_dipole_node(component_model, bx, by, threshold)
+        candidate_a = self._find_nearest_external_connectable_node(component_model, ax, ay, threshold)
+        candidate_b = self._find_nearest_external_connectable_node(component_model, bx, by, threshold)
 
         best = None
         if candidate_a and candidate_b:
@@ -617,7 +659,7 @@ class CircuitScene(QGraphicsScene):
             else:
                 tx, ty = component_model.node_b.position
 
-            candidate = self._find_nearest_external_dipole_node(component_model, tx, ty, threshold)
+            candidate = self._find_nearest_external_connectable_node(component_model, tx, ty, threshold)
             if candidate is None:
                 continue
 
@@ -645,11 +687,17 @@ class CircuitScene(QGraphicsScene):
                 if wire.node_a.id in node_ids or wire.node_b.id in node_ids:
                     item.refresh_geometry()
 
-    def _find_nearest_external_dipole_node(self, component_model, x, y, threshold):
-        """Return (node, distance) for closest node from another dipole within threshold."""
+    def _find_nearest_external_connectable_node(self, component_model, x, y, threshold):
+        """Return (node, distance) for nearest connectable node within threshold.
+
+        Connectable nodes are:
+        - terminal nodes of other dipoles
+        - free wire endpoints (no dipole attached, used by exactly one wire)
+        """
         nearest_node = None
         nearest_dist = None
 
+        # Candidate 1: nodes from other dipoles
         for dipole in self.model.dipoles.values():
             if dipole is component_model:
                 continue
@@ -664,9 +712,37 @@ class CircuitScene(QGraphicsScene):
                     nearest_node = node
                     nearest_dist = dist
 
+        # Candidate 2: free wire endpoints not connected to any dipole
+        for node in self.model.nodes.values():
+            if not self._is_free_wire_endpoint(node):
+                continue
+            nx, ny = node.position
+            dist = ((x - nx) ** 2 + (y - ny) ** 2) ** 0.5
+            if dist > threshold:
+                continue
+            if nearest_dist is None or dist < nearest_dist:
+                nearest_node = node
+                nearest_dist = dist
+
         if nearest_node is None:
             return None
         return nearest_node, nearest_dist
+
+    def _is_free_wire_endpoint(self, node):
+        """True when node is a loose wire end (no dipole, exactly one attached wire)."""
+        if node is None:
+            return False
+        if getattr(node, "connected_dipoles", None):
+            if len(node.connected_dipoles) > 0:
+                return False
+
+        wire_count = 0
+        for wire in self.model.wires.values():
+            if wire.node_a is node or wire.node_b is node:
+                wire_count += 1
+                if wire_count > 1:
+                    return False
+        return wire_count == 1
 
     def _snap_component_terminal_to_node(self, component_item, terminal, target_node):
         """Move component so the given terminal lands exactly on the target node."""

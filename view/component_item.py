@@ -55,12 +55,21 @@ class ComponentItem(QGraphicsItem):
     def itemChange(self, change, value):
         # Snapping
         if change == QGraphicsItem.ItemPositionChange and self.scene():
+            scene = self.scene()
             new_pos = value
-            grid_size = self.scene().GRID_SIZE
+            grid_size = scene.GRID_SIZE
             x = round(new_pos.x() / grid_size) * grid_size
             y = round(new_pos.y() / grid_size) * grid_size  
             snapped_pos = QPointF(x, y)
-            self.scene().update_wires_connected_to(self.component, snapped_pos, self.rotation())
+
+            if hasattr(scene, "get_smart_snapped_component_position"):
+                snapped_pos = scene.get_smart_snapped_component_position(
+                    self.component,
+                    snapped_pos,
+                    self.rotation(),
+                )
+
+            scene.update_wires_connected_to(self.component, snapped_pos, self.rotation())
             return snapped_pos
 
         return super().itemChange(change, value)
