@@ -43,6 +43,9 @@ class CircuitView(QGraphicsView):
             # Mode dessin
             self.setDragMode(QGraphicsView.NoDrag)
 
+    def clear_tool_preview(self):
+        self._clear_ghost_preview()
+
     def wheelEvent(self, event):
         """Ctrl + molette zoome la vue"""
         if event.modifiers() & Qt.ControlModifier:
@@ -241,7 +244,20 @@ class CircuitScene(QGraphicsScene):
 
     def set_tool(self, tool_name):
         """Definit le nom de l'outil actif"""
+        if tool_name != "wire" and self.drawing_wire:
+            self.cancel_wire_drawing()
         self.current_tool = tool_name
+        self._update_node_cursors(tool_name)
+
+    def _update_node_cursors(self, tool_name):
+        cursor = Qt.OpenHandCursor if tool_name == "pointer" else Qt.CrossCursor
+        for item in self.items():
+            if isinstance(item, NodeItem):
+                item.setCursor(cursor)
+
+    def _clear_item_cursors(self):
+        for item in self.items():
+            item.unsetCursor()
 
     def _push_undo_snapshot(self):
         """Enregistre l'etat courant du circuit avant une action qui modifie"""
@@ -864,7 +880,7 @@ class CircuitScene(QGraphicsScene):
         if node_item is None or node_item.node is None:
             return
         node = node_item.node
-        x, y = self.snap_to_grid(node_item.scenePos())
+        x, y = self.snap_to_grid(node_item.pos())
         node.position = (x, y)
         node_item.setPos(QPointF(x, y))
         self._refresh_wires_for_node(node)
@@ -958,11 +974,13 @@ class CircuitScene(QGraphicsScene):
         # Deplace les deux extremites du fil selon le deplacement de l'item
         delta = wire_item.pos()
         if delta.manhattanLength() > 0.1:
+            wire_item.setPos(0, 0)
             wire_item.apply_scene_delta(delta, detach_shared_nodes=True, snap_endpoints=False)
+            wire_item.refresh_geometry()
         else:
             wire_item.refresh_geometry()
 
-        self._refresh_free_node_items()
+        self._sync_free_node_items_from_model()
 
     def rotate_selected_components(self, angle_degrees):
         """Tourne les dipoles selectionnes selon l'angle donne et rafraichit les fils connectes"""

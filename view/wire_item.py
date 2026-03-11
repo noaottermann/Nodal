@@ -60,6 +60,7 @@ class WireItem(QGraphicsLineItem):
         if not self.wire.node_a or not self.wire.node_b:
             return
 
+
         shared_a = self._node_shared_with_dipole(self.wire.node_a, model)
         shared_b = self._node_shared_with_dipole(self.wire.node_b, model)
 
@@ -117,6 +118,7 @@ class WireItem(QGraphicsLineItem):
 
         if hasattr(scene, "_sync_free_node_items_from_model"):
             scene._sync_free_node_items_from_model()
+
 
     def itemChange(self, change, value):
         # Aimantation de position

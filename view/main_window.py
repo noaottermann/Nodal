@@ -303,12 +303,22 @@ class MainWindow(QMainWindow):
         # Vue
         if hasattr(self, 'view'):
             self.view.set_tool_mode(tool_name)
+            if hasattr(self.view, "clear_tool_preview"):
+                self.view.clear_tool_preview()
+            if hasattr(self, "scene") and hasattr(self.scene, "_clear_item_cursors"):
+                self.scene._clear_item_cursors()
             
         # Change le curseur
         if tool_name == "pointer":
             self.setCursor(Qt.ArrowCursor)
+            if hasattr(self, "view"):
+                self.view.setCursor(Qt.ArrowCursor)
+                self.view.viewport().setCursor(Qt.ArrowCursor)
         else:
             self.setCursor(Qt.CrossCursor)
+            if hasattr(self, "view"):
+                self.view.setCursor(Qt.CrossCursor)
+                self.view.viewport().setCursor(Qt.CrossCursor)
 
 
     def setup_menus(self):
