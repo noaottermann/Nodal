@@ -6,6 +6,7 @@ class WireItem(QGraphicsLineItem):
     def __init__(self, wire_model):
         super().__init__()
         self.wire = wire_model
+        self._is_selected = False
         
         self.setPen(QPen(Qt.black, 2))
         self.setFlags(QGraphicsItem.ItemIsSelectable | 
@@ -132,6 +133,7 @@ class WireItem(QGraphicsLineItem):
         # Visuels de selection
         if change == QGraphicsItem.ItemSelectedChange:
             is_selected = bool(value)
+            self._is_selected = is_selected
             pen = self.pen()
             if is_selected:
                 pen.setColor(QColor("#0078d7"))
@@ -142,6 +144,9 @@ class WireItem(QGraphicsLineItem):
                 pen.setStyle(Qt.SolidLine)
                 self.setZValue(0)
             self.setPen(pen)
+            if self.scene() is not None:
+                self.scene()._refresh_wires_for_node(self.wire.node_a)
+                self.scene()._refresh_wires_for_node(self.wire.node_b)
 
         return super().itemChange(change, value)
 

@@ -832,11 +832,20 @@ class CircuitScene(QGraphicsScene):
     def _refresh_wires_for_node(self, node):
         if node is None:
             return
+        highlight_node = False
         for item in self.items():
             if isinstance(item, WireItem):
                 wire = item.wire
                 if wire.node_a is node or wire.node_b is node:
                     item.refresh_geometry()
+                    if getattr(item, "_is_selected", False):
+                        highlight_node = True
+        for item in self.items():
+            if isinstance(item, NodeItem) and getattr(item, "node", None) is node:
+                if highlight_node:
+                    item.setBrush(QColor("#0078d7"))
+                else:
+                    item.setBrush(QColor(Qt.black))
 
     def _refresh_free_node_items(self):
         # Reconstruit l'affichage des noeuds qui ne sont pas rattaches a des dipoles
