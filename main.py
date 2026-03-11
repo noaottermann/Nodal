@@ -1,4 +1,4 @@
-"""Application entry point."""
+"""Point d'entree de l'application"""
 
 import sys
 
@@ -9,7 +9,7 @@ from view.main_window import MainWindow
 from utils.translator import Translator
 
 def main():
-    """Create the Qt application and show the main window"""
+    """Cree l'application Qt et affiche la fenetre principale"""
     app = QApplication(sys.argv)
 
     Translator.load_language("fr")

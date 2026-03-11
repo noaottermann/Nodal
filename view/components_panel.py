@@ -18,7 +18,7 @@ from PyQt5.QtWidgets import (
 
 
 class ComponentsPanel(QWidget):
-	# Signal emitted when a component is double-clicked (for tool selection)
+	# Signal emis lorsqu'un composant est double-clique (pour la selection d'outil)
 	tool_selected = pyqtSignal(str)
 
 	def __init__(self, parent=None):
@@ -286,7 +286,7 @@ class ComponentsPanel(QWidget):
 		self._scroll_to_category(category_key)
 
 	def _on_component_double_clicked(self, item):
-		"""Emit tool_selected signal when a component item is double-clicked."""
+		"""Emet le signal tool_selected lorsqu'un composant est double-clique"""
 		if item is None:
 			return
 		component_id = item.data(Qt.UserRole)

@@ -1,1 +1,1 @@
-"""Tools panel placeholders."""
+"""Emplacements pour le panneau d'outils"""

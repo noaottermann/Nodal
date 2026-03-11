@@ -1,1 +1,1 @@
-"""View package for Qt widgets and graphics items."""
+"""Module vue pour les widgets Qt et les elements graphiques"""

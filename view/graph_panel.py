@@ -1,1 +1,1 @@
-"""Graph panel placeholders."""
+"""Emplacements pour le panneau de graphe"""

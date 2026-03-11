@@ -1,1 +1,1 @@
-"""Application settings placeholders."""
+"""Emplacements pour les parametres d'application"""

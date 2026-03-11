@@ -1,1 +1,1 @@
-"""Theme configuration placeholders."""
+"""Emplacements pour la configuration des themes"""

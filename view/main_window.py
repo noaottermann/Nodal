@@ -9,7 +9,7 @@ from view.components_panel import ComponentsPanel
 
 class MainWindow(QMainWindow):
     """
-    Main window of Nodal
+    Fenêtre principale de Nodal
     """
     def __init__(self, model=None):
         super().__init__()
@@ -19,21 +19,21 @@ class MainWindow(QMainWindow):
         self.retranslateUi()
 
     def init_ui_structure(self):
-        """Create the main UI structure"""
+        """Crée la structure principale de l'interface"""
         self._configure_window_geometry()
         
-        # Setup
+        # Initialisation
         self.create_actions()
         self.create_shortcuts()
         self.setup_menus()
         self.setup_toolbar()
 
-        # Status bar
+        # Barre de statut
         
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
         
-        # Central widget
+        # Widget central
         self._setup_central_widget()
 
     def _configure_window_geometry(self):
@@ -69,14 +69,14 @@ class MainWindow(QMainWindow):
         central_layout.addWidget(self.view, 1)
         self.setCentralWidget(central_widget)
 
-        # Anchor toolbar to the central area so its geometry follows panel/view sizes
+        # Ancre la barre d'outils dans la zone centrale pour suivre la géométrie du panneau et de la vue
         if hasattr(self, "toolbar"):
             self.toolbar.setParent(central_widget)
             self.toolbar.show()
             self._update_toolbar_geometry()
             self._update_transform_actions_visibility()
         
-        # Set initial focus to the circuit view instead of search bar
+        # Place le focus initial sur la vue du circuit plutôt que sur la barre de recherche
         self.view.setFocus()
 
     def resizeEvent(self, event):
@@ -84,8 +84,7 @@ class MainWindow(QMainWindow):
         self._update_toolbar_geometry()
 
     def closeEvent(self, event):
-        # During shutdown, queued Qt signals may still fire while the scene is being deleted.
-        # Disconnect proactively to avoid calling slots on a deleted C++ wrapper.
+        # Pendant la fermeture, des signaux Qt en attente peuvent encore arriver pendant la destruction de la scène
         try:
             if hasattr(self, "scene") and self.scene is not None:
                 self.scene.selectionChanged.disconnect(self._update_transform_actions_visibility)
@@ -132,7 +131,7 @@ class MainWindow(QMainWindow):
         try:
             selected_items = self.scene.selectedItems()
         except RuntimeError:
-            # Scene wrapper may already be deleted during window close.
+            # L'enveloppe de la scène peut déjà être détruite pendant la fermeture
             return
 
         has_dipole = any(hasattr(item, "component") for item in selected_items)
@@ -145,7 +144,7 @@ class MainWindow(QMainWindow):
             self.toolbar_transform_separator.setVisible(has_dipole)
 
     def create_actions(self):
-        """Create all actions for the main window"""
+        """Crée toutes les actions de la fenêtre principale"""
         self._create_file_actions()
         self._create_edit_actions()
         self._create_view_actions()
@@ -157,7 +156,7 @@ class MainWindow(QMainWindow):
             action.setShortcut(shortcut)
         if slot:
             action.triggered.connect(slot)
-        # The action is stored in the dictionary with its translation key as its ID
+        # L'action est stockée dans le dictionnaire avec sa clé de traduction comme identifiant
         self.custom_actions[key] = action
         return action
 
@@ -274,11 +273,11 @@ class MainWindow(QMainWindow):
     def create_shortcuts(self):
         """Définit les raccourcis clavier globaux"""
 
-        # Delete key
+        # Touche de suppression
         self.shortcut_delete = QShortcut(QKeySequence("Del"), self)
         self.shortcut_delete.activated.connect(self.delete_selected_items)
         
-        # Test keys
+        # Raccourcis de test
         self.shortcut_tool_pointer = QShortcut(QKeySequence("V"), self)
         self.shortcut_tool_pointer.activated.connect(lambda: self.set_tool("pointer"))
         self.shortcut_tool_wire = QShortcut(QKeySequence("W"), self)
@@ -327,7 +326,7 @@ class MainWindow(QMainWindow):
         self._setup_edit_menu()
         self._setup_view_menu()
         self._setup_options_menu()
-        # Simulation Menu
+        # Menu simulation
 
     def _setup_file_menu(self):
         self.menu_file.addAction(self.custom_actions["action_new_file"])
@@ -529,7 +528,7 @@ class MainWindow(QMainWindow):
         else:
             QMessageBox.warning(self, "Error", f"Unable to load language '{lang}'.")
 
-    # Action Handlers
+    # Gestionnaires d'actions
     def on_new_file(self):
         print("New File")
 
@@ -563,7 +562,7 @@ class MainWindow(QMainWindow):
     def on_select_invert(self):
         print("Invert Selection")
 
-    # TODO peut-être regrouper ces fonctions de filtre dans une seule avec un paramètre ?
+    # TODO regrouper ces fonctions de filtre dans une seule avec un paramètre
     def on_filter_nodes(self):
         print("Filter Nodes")
 
@@ -621,7 +620,7 @@ class MainWindow(QMainWindow):
     def on_clean_canvas(self):
         print("Action: Nettoyer le canvas")
 
-    # View Actions
+    # Actions d'affichage
     def on_toggle_grid(self):
         print("Action: Afficher/Masquer la grille")
 
@@ -679,7 +678,7 @@ class MainWindow(QMainWindow):
     def on_toggle_view_toolbar(self):
         print("Fenêtre: Barre d'outils")
 
-    # Options Actions
+    # Actions d'options
 
     def on_set_autosave_interval(self):
         print("Option: Réglage de l'intervalle de sauvegarde")
@@ -763,12 +762,12 @@ class MainWindow(QMainWindow):
             self.scene.delete_selection()
 
     def undo_last_action(self):
-        """Annule la dernière action modifiant le circuit."""
+        """Annule la dernière action modifiant le circuit"""
         if hasattr(self, 'scene'):
             self.scene.undo_last_action()
 
     def redo_last_action(self):
-        """Rétablit la dernière action annulée."""
+        """Rétablit la dernière action annulée"""
         if hasattr(self, 'scene'):
             self.scene.redo_last_action()
 

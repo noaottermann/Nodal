@@ -1,1 +1,1 @@
-"""Simulation controller placeholders."""
+"""Emplacements pour le controleur de simulation"""

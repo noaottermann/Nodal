@@ -1,1 +1,1 @@
-"""Solver package."""
+"""Module des solveurs"""

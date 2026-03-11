@@ -2,12 +2,10 @@ import json
 from .node import Node
 from .wire import Wire
 class Circuit:
-    """
-    Main class representing the full electrical circuit.
-    """
+    """Classe principale representant le circuit electrique complet"""
 
     def __init__(self):
-        """Initialize an empty circuit."""
+        """Initialise un circuit vide"""
         self.nodes = {} 
         self.dipoles = {}
         self.wires = {}
@@ -15,7 +13,7 @@ class Circuit:
         self._next_dipole_id = 1
         self._next_wire_id = 1
 
-    # Node management
+    # Gestion des noeuds
 
     def create_node(self, x, y, is_ground=False):
         node_id = self._next_node_id
@@ -36,7 +34,7 @@ class Circuit:
                 return node
         return None
     
-    # Wire management
+    # Gestion des fils
 
     def create_wire(self, node_a, node_b):
         if node_a.id not in self.nodes or node_b.id not in self.nodes:
@@ -53,7 +51,7 @@ class Circuit:
             self.wires[wire_id].disconnect()
             del self.wires[wire_id]
 
-    # Dipole management
+    # Gestion des dipoles
 
     def add_dipole(self, dipole):
         if dipole.node_a and dipole.node_a.id not in self.nodes:
@@ -73,7 +71,7 @@ class Circuit:
     def get_next_dipole_id(self):
         return self._next_dipole_id
 
-    # Solver helpers
+    # Aides pour le solveur
 
     def get_ground_node(self):
         for node in self.nodes.values():
@@ -95,7 +93,7 @@ class Circuit:
         self._next_dipole_id = 1
         self._next_wire_id = 1
 
-    # Save / Load (JSON)
+    # Sauvegarde / Chargement (JSON)
 
     def to_json(self):
         data = {

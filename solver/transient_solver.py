@@ -1,1 +1,1 @@
-"""Transient solver placeholder."""
+"""Solveur transitoire en attente d'implementation"""

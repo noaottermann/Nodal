@@ -1,1 +1,1 @@
-"""Application-level controller placeholders."""
+"""Emplacements pour le controleur applicatif"""

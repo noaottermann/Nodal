@@ -1,1 +1,1 @@
-"""File controller placeholders."""
+"""Emplacements pour le controleur de fichiers"""

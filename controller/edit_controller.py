@@ -1,1 +1,1 @@
-"""Editing controller placeholders."""
+"""Emplacements pour le controleur d'edition"""

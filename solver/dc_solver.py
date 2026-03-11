@@ -3,11 +3,11 @@ from model.components import Resistor, VoltageSourceDC
 
 class DCSolver:
     def solve(self, circuit):
-        """Solve a DC circuit using nodal analysis with voltage sources."""
-        # Group nodes connected by wires
+        """Resout un circuit continu par analyse nodale avec sources de tension"""
+        # Regroupe les noeuds connectes par des fils
         node_groups = self._group_connected_nodes(circuit)
         
-        # Ground handling
+        # Gestion de la masse
         ground_node = circuit.get_ground_node()
         ground_group_id = None
         if ground_node:
@@ -22,7 +22,7 @@ class DCSolver:
                 print("Circuit vide")
                 return
 
-        # Group-to-matrix index mapping
+        # Correspondance groupe vers indice de matrice
         next_index = 0
         group_to_idx = {}
         unique_groups = set(node_groups.values())
@@ -32,7 +32,7 @@ class DCSolver:
             next_index += 1
         num_v_vars = next_index
 
-        # Current variables for voltage sources
+        # Variables de courant des sources de tension
         voltage_sources = []
         for dipole in circuit.dipoles.values():
             if isinstance(dipole, VoltageSourceDC):
@@ -46,7 +46,7 @@ class DCSolver:
         A = np.zeros((total_vars, total_vars))
         Z = np.zeros(total_vars)
 
-        # Fill passive elements
+        # Remplit les elements passifs
         for dipole in circuit.dipoles.values():
             idx_a = self._get_matrix_index(dipole.node_a, node_groups, group_to_idx, ground_group_id)
             idx_b = self._get_matrix_index(dipole.node_b, node_groups, group_to_idx, ground_group_id)
@@ -61,7 +61,7 @@ class DCSolver:
                     if idx_a is not None:
                         A[idx_b, idx_a] -= g
 
-        # Fill voltage sources
+        # Remplit les sources de tension
         current_var_offset = num_v_vars
         for i, v_src in enumerate(voltage_sources):
             idx_src = current_var_offset + i
@@ -75,10 +75,10 @@ class DCSolver:
                 A[idx_b, idx_src] = -1
             Z[idx_src] = v_src.dc_voltage
 
-        # Solve
+        # Resolution
         x = np.linalg.solve(A, Z)
 
-        # Distribute results
+        # Repartit les resultats
         for node_id, node in circuit.nodes.items():
             group_id = node_groups[node_id]
             if group_id == ground_group_id:
@@ -89,7 +89,7 @@ class DCSolver:
                     new_pot = float(x[idx])
                     node.potential = new_pot
 
-        # Update currents
+        # Met a jour les courants
         for dipole in circuit.dipoles.values():
             if isinstance(dipole, Resistor):
                 dipole.current = dipole.voltage / dipole.resistance
@@ -98,7 +98,7 @@ class DCSolver:
             v_src.current = -float(x[idx_src])
 
     def _group_connected_nodes(self, circuit):
-        """Union-Find to group nodes connected by wires."""
+        """Utilise Union-Find pour regrouper les noeuds relies par des fils"""
         parent = {node_id: node_id for node_id in circuit.nodes}
         def find(i):
             if parent[i] == i:
@@ -118,7 +118,7 @@ class DCSolver:
         return {node_id: find(node_id) for node_id in circuit.nodes}
 
     def _get_matrix_index(self, node, node_groups, group_to_idx, ground_group_id):
-        """Map a node to its matrix index, skipping the ground group."""
+        """Associe un noeud a son indice de matrice en ignorant le groupe de masse"""
         if node is None:
             return None
         gid = node_groups[node.id]

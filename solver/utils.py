@@ -1,1 +1,1 @@
-"""Solver utility helpers (placeholder)."""
+"""Utilitaires de solveur en attente d'implementation"""

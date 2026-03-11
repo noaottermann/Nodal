@@ -1,1 +1,1 @@
-"""Controller package."""
+"""Module des controleurs"""

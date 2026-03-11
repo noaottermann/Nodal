@@ -1,1 +1,1 @@
-"""IO package for import/export utilities."""
+"""Module IO pour les utilitaires d'import et d'export"""

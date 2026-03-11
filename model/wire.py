@@ -1,17 +1,15 @@
 class Wire:
-    """
-    Represents an ideal electrical wire.
-    """
+    """Represente un fil electrique ideal"""
 
     def __init__(self, wire_id, node_a, node_b, color="#000000"):
         """
-        Initialize a wire.
+        Initialise un fil
 
         Args:
-            wire_id (int): Unique wire ID
-            node_a (Node): Start node
-            node_b (Node): End node
-            color (str): Wire color (hex code)
+            wire_id (int): Identifiant unique du fil
+            node_a (Node): Noeud de depart
+            node_b (Node): Noeud d'arrivee
+            color (str): Couleur du fil (code hex)
         """
         self.id = int(wire_id)
         self.node_a = node_a

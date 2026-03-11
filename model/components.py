@@ -2,9 +2,7 @@ import math
 from .dipole import Dipole
 
 class Resistor(Dipole):
-    """
-    Ideal resistor.
-    """
+    """Resistance ideale"""
     def __init__(self, dipole_id, node_a, node_b, x=0.0, y=0.0, rotation=0.0, name="Resistor", resistance=1000.0):
         super().__init__(dipole_id, "Resistor", node_a, node_b, x, y, rotation)
         self.resistance = float(resistance)
@@ -17,9 +15,7 @@ class Resistor(Dipole):
 
 
 class Capacitor(Dipole):
-    """
-    Ideal capacitor.
-    """
+    """Condensateur ideal"""
     def __init__(self, dipole_id, node_a, node_b, x=0.0, y=0.0, rotation=0.0, name="Capacitor", capacitance=1e-6):
         super().__init__(dipole_id, "Capacitor", node_a, node_b, x, y, rotation)
         self.capacitance = float(capacitance)
@@ -32,9 +28,7 @@ class Capacitor(Dipole):
 
 
 class Inductor(Dipole):
-    """
-    Ideal inductor.
-    """
+    """Inductance ideale"""
     def __init__(self, dipole_id, node_a, node_b, x=0.0, y=0.0, rotation=0.0, name="Inductor", inductance=1e-3):
         super().__init__(dipole_id, "Inductor", node_a, node_b, x, y, rotation)
         self.inductance = float(inductance)
@@ -46,9 +40,7 @@ class Inductor(Dipole):
         self.inductance = float(params.get("inductance", 1e-3))
 
 class VoltageSourceDC(Dipole):
-    """
-    Ideal DC voltage source.
-    """
+    """Source de tension continue ideale"""
     def __init__(self, dipole_id, node_a, node_b, x=0.0, y=0.0, rotation=0.0, name="VoltageSourceDC", dc_voltage=5.0):
         super().__init__(dipole_id, "DC Source", node_a, node_b, x, y, rotation)
         self.dc_voltage = float(dc_voltage)
@@ -61,9 +53,7 @@ class VoltageSourceDC(Dipole):
 
 
 class VoltageSourceAC(Dipole):
-    """
-    Sinusoidal AC voltage source.
-    """
+    """Source de tension alternative sinusoidale"""
     def __init__(self, dipole_id, node_a, node_b, x=0.0, y=0.0, rotation=0.0, name="VoltageSourceAC", 
                  amplitude=10.0, frequency=50.0, phase=0.0, offset=0.0):
         super().__init__(dipole_id, "AC Source", node_a, node_b, x, y, rotation)

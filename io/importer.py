@@ -1,1 +1,1 @@
-"""Import helpers for circuit files."""
+"""Utilitaires d'import pour les fichiers de circuit"""

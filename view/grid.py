@@ -5,43 +5,41 @@ class Grid:
     def __init__(self, grid_size=20):
         self.grid_size = grid_size
         
-        # Point color
+        # Couleur des points
         self.pen = QPen(QColor(200, 200, 200), 2)
         
-        # Skip drawing when zoomed out too far
+        # Ignore le rendu quand le zoom est trop eloigne
         self.min_zoom_factor = 0.3 
 
     def draw(self, painter, rect, view_scale):
-        """
-        Draw the grid only within the visible area.
-        """
+        """Dessine la grille uniquement dans la zone visible"""
         
-        # Skip drawing when too zoomed out to save CPU
+        # Ignore le rendu quand le zoom est trop eloigne pour economiser le CPU
         if view_scale < self.min_zoom_factor:
             return
 
-        # Visible bounds
+        # Limites visibles
         left = rect.left()
         top = rect.top()
         
-        # First grid-aligned point
+        # Premier point aligne a la grille
         first_x = left - (left % self.grid_size)
         first_y = top - (top % self.grid_size)
 
-        # Build points
+        # Construit les points
         points = []
         
-        # Loop X from left to right
+        # Parcourt X de gauche a droite
         x = first_x
         while x < rect.right():
-            # Loop Y from top to bottom
+            # Parcourt Y de haut en bas
             y = first_y
             while y < rect.bottom():
                 points.append(QPointF(x, y))
                 y += self.grid_size
             x += self.grid_size
 
-        # Draw
+        # Dessine
         if points:
             painter.setPen(self.pen)
             painter.drawPoints(points)

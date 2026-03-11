@@ -7,9 +7,7 @@ from PyQt5.QtGui import QPainter, QPen, QColor, QFont, QPainterPath
 from model.components import Resistor, VoltageSourceDC, VoltageSourceAC, Capacitor, Inductor
 
 class ComponentItem(QGraphicsItem):
-    """
-    Base graphics item for all dipoles.
-    """
+    """Element graphique de base pour tous les dipoles"""
 
     def __init__(self, component_model):
         super().__init__()
@@ -21,39 +19,37 @@ class ComponentItem(QGraphicsItem):
         self._rotate_start_angle = 0.0
         self._rotate_start_rotation = 0.0
         
-        # Interaction settings
+        # Reglages d'interaction
         self.setFlags(
             QGraphicsItem.ItemIsSelectable
             | QGraphicsItem.ItemSendsGeometryChanges
         )
         
-        # Initial position and rotation
+        # Position et rotation initiales
         x, y = self.component.position
         self.setPos(x, y)
         self.setRotation(self.component.rotation)
 
-        # Standard dimensions
+        # Dimensions standard
         self.width = 60
         self.height = 40
         
-        # Tooltip
+        # Infobulle
         self.setToolTip(f"{self.component.name} (ID: {self.component.id})")
 
     def boundingRect(self):
-        """
-        Define the interactive rectangular area for the component.
-        """
+        """Definit la zone rectangulaire interactive du composant"""
         margin = 5
         return QRectF(-self.width/2 - margin, -self.height/2 - margin, self.width + 2*margin, self.height + 2*margin)
 
     def shape(self):
-        """Use a tighter shape so clicks in empty space don't grab the item."""
+        """Utilise une forme plus serree pour eviter de selectionner l'item dans le vide"""
         path = QPainterPath()
         path.addRect(QRectF(-self.width / 2, -self.height / 2, self.width, self.height))
         return path
 
     def itemChange(self, change, value):
-        # Snapping
+        # Aimantation
         if change == QGraphicsItem.ItemPositionChange and self.scene():
             scene = self.scene()
             new_pos = value
@@ -75,9 +71,7 @@ class ComponentItem(QGraphicsItem):
         return super().itemChange(change, value)
 
     def mouseReleaseEvent(self, event):
-        """
-        Called when the component is released after a move.
-        """
+        """Appelee quand le composant est relache apres un deplacement"""
         if self._is_rotating and event.button() == Qt.RightButton:
             self._is_rotating = False
             if self.scene():
@@ -89,7 +83,7 @@ class ComponentItem(QGraphicsItem):
         self._drag_started = False
         self._press_scene_pos = None
         
-        # Ask the scene to update connections
+        # Demande a la scene de mettre a jour les connexions
         if self.scene():
             self.scene().handle_component_move(self)
 
@@ -133,33 +127,29 @@ class ComponentItem(QGraphicsItem):
         super().mouseMoveEvent(event)
 
     def update_model_nodes(self):
-        """
-        Recompute node A and B positions from the component center and rotation.
-        """
-        # Component center
+        """Recalcule les positions des noeuds A et B depuis le centre et la rotation du composant"""
+        # Centre du composant
         cx, cy = self.pos().x(), self.pos().y()
         rotation = self.rotation()
         
-        # Standard terminal offset from the center
+        # Decalage standard des bornes depuis le centre
         offset = 30
         
-        # Trigonometric calculation
+        # Calcul trigonometrique
         rad = math.radians(rotation)
         dx = offset * math.cos(rad)
         dy = offset * math.sin(rad)
         
-        # Update node coordinates
+        # Met a jour les coordonnees des noeuds
         self.component.node_a.position = (cx - dx, cy - dy)
         
         self.component.node_b.position = (cx + dx, cy + dy)
         
-        # Update dipole position
+        # Met a jour la position du dipole
         self.component.position = (cx, cy)
 
     def paint(self, painter, option, widget=None):
-        """
-        Draw selection bounds and the specific symbol.
-        """
+        """Dessine les limites de selection et le symbole specifique"""
         painter.setRenderHint(QPainter.Antialiasing)
         is_selected = option.state & QStyle.State_Selected
         if is_selected:
@@ -177,7 +167,7 @@ class ComponentItem(QGraphicsItem):
 
 
     def draw_labels(self, painter):
-        """Draw the name and primary value."""
+        """Dessine le nom et la valeur principale"""
         painter.setPen(QColor("black"))
         font = QFont("Arial", 8)
         painter.setFont(font)
@@ -190,14 +180,14 @@ class ComponentItem(QGraphicsItem):
         painter.drawText(val_rect, Qt.AlignCenter, value_text)
 
     def draw_symbol(self, painter):
-        """Override in subclasses to draw the symbol."""
+        """A surcharger dans les sous-classes pour dessiner le symbole"""
         pass
 
     def get_value_text(self):
-        """Override to provide the displayed unit/value."""
+        """A surcharger pour fournir l'unite ou la valeur affichee"""
         return ""
 
-# Symbol drawing
+    # Dessin des symboles
 
 class ResistorItem(ComponentItem):
     def draw_symbol(self, painter):
@@ -205,17 +195,17 @@ class ResistorItem(ComponentItem):
         painter.setPen(pen)
         painter.setBrush(Qt.NoBrush)
 
-        # European style (rectangle)
-        # Connection lines
-        painter.drawLine(-30, 0, -15, 0)  # Left
-        painter.drawLine(15, 0, 30, 0)    # Right
+        # Style europeen (rectangle)
+        # Lignes de connexion
+        painter.drawLine(-30, 0, -15, 0)  # Gauche
+        painter.drawLine(15, 0, 30, 0)    # Droite
         
-        # Body (rectangle)
+        # Corps (rectangle)
         rect = QRectF(-15, -8, 30, 16)
         painter.drawRect(rect)
     
     def get_value_text(self):
-        # Access model-specific properties
+        # Accede aux proprietes specifiques du modele
         if hasattr(self.component, 'resistance'):
             return f"{self.component.resistance} Ω"
         return ""
@@ -226,18 +216,18 @@ class VoltageSourceItem(ComponentItem):
         painter.setPen(pen)
         painter.setBrush(Qt.NoBrush)
 
-        # Lines
+        # Lignes
         painter.drawLine(-30, 0, -15, 0)
         painter.drawLine(15, 0, 30, 0)
         
-        # Circle
+        # Cercle
         painter.drawEllipse(QPointF(0, 0), 15, 15)
         
-        # Symbols +/- or ~
+        # Symboles +/- ou ~
         painter.setPen(QPen(Qt.black, 1))
         
         if isinstance(self.component, VoltageSourceDC):
-            # Vertical line for +
+            # Trait vertical pour +
             painter.drawLine(-8, -5, -8, 5)
             painter.drawLine(-11, 0, -5, 0)
         elif isinstance(self.component, VoltageSourceAC):
@@ -259,11 +249,11 @@ class CapacitorItem(ComponentItem):
         pen = QPen(Qt.black, 2)
         painter.setPen(pen)
         
-        # Lines
+        # Lignes
         painter.drawLine(-30, 0, -5, 0)
         painter.drawLine(5, 0, 30, 0)
         
-        # Vertical plates
+        # Plaques verticales
         painter.drawLine(-5, -12, -5, 12)
         painter.drawLine(5, -12, 5, 12)
 
@@ -276,7 +266,7 @@ class InductorItem(ComponentItem):
         painter.setPen(pen)
         painter.setBrush(Qt.NoBrush)
         
-        # Lines
+        # Lignes
         painter.drawLine(-30, 0, -15, 0)
         painter.drawLine(15, 0, 30, 0)
         
@@ -289,9 +279,7 @@ class InductorItem(ComponentItem):
         return f"{self.component.inductance} H"
 
 def create_component_item(component_model):
-    """
-    Helper that returns the proper graphics item for a model object.
-    """
+    """Fonction utilitaire qui retourne l'element graphique adapte a un objet modele"""
     if isinstance(component_model, Resistor):
         return ResistorItem(component_model)
     elif isinstance(component_model, (VoltageSourceDC, VoltageSourceAC)):
@@ -301,5 +289,5 @@ def create_component_item(component_model):
     elif isinstance(component_model, Inductor):
         return InductorItem(component_model)
     else:
-        # Fallback for unknown components
+        # Repli pour les composants inconnus
         return ComponentItem(component_model)

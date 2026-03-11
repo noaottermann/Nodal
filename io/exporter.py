@@ -1,1 +1,1 @@
-"""Export helpers for circuit files."""
+"""Utilitaires d'export pour les fichiers de circuit"""

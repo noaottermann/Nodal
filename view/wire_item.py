@@ -4,7 +4,7 @@ from PyQt5.QtCore import Qt, QPointF, QLineF
 
 class WireHandle(QGraphicsRectItem):
     def __init__(self, parent_wire):
-        # Centered 8x8 square
+        # Carre 8x8 centre
         super().__init__(-4, -4, 8, 8, parent=parent_wire)
         self.parent_wire = parent_wire
         
@@ -12,37 +12,37 @@ class WireHandle(QGraphicsRectItem):
         self.setPen(QPen(Qt.black, 1))
         
         self.setFlags(QGraphicsItem.ItemSendsGeometryChanges)
-        self.setZValue(2)  # Always on top of the wire
+        self.setZValue(2)  # Toujours au-dessus du fil
         self.setCursor(Qt.PointingHandCursor)
         self.setVisible(False)
         
-        # Drag state
+        # Etat du glisser
         self._is_dragging = False
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             self._is_dragging = True
-            # Capture the mouse to keep receiving move events
+            # Capture la souris pour continuer a recevoir les evenements de deplacement
             event.accept() 
         else:
             super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
         if self._is_dragging:
-            # Mouse position
+            # Position de la souris
             mouse_scene_pos = self.mapToScene(event.pos())
             
-            # Snapping
+            # Aimantation
             target_pos = self.scene().get_snapped_position(mouse_scene_pos)
             target_pos = QPointF(*target_pos)
 
-            # Convert to parent-local coordinates
+            # Convertit en coordonnees locales du parent
             new_pos_in_parent = self.parentItem().mapFromScene(target_pos)
             
-            # Apply move
+            # Applique le deplacement
             self.setPos(new_pos_in_parent)
             
-            # Update visuals
+            # Met a jour le visuel
             self.parent_wire.update_line_visuals()
             event.accept()
         else:
@@ -51,7 +51,7 @@ class WireHandle(QGraphicsRectItem):
     def mouseReleaseEvent(self, event):
         if self._is_dragging:
             self._is_dragging = False
-            # End of move: let the scene finalize snapping and model updates
+            # Fin du deplacement : laisse la scene finaliser l'aimantation et les mises a jour modele
             self.scene().handle_wire_move(self.parent_wire)
             event.accept()
         else:
@@ -67,7 +67,7 @@ class WireItem(QGraphicsLineItem):
         self.setFlags(QGraphicsItem.ItemIsSelectable | 
                       QGraphicsItem.ItemIsMovable | 
                       QGraphicsItem.ItemSendsGeometryChanges)
-        self.setZValue(0)  # Wire below handles
+        self.setZValue(0)  # Fil sous les poignees
         
         self.handle_a = WireHandle(self)
         self.handle_b = WireHandle(self)
@@ -75,31 +75,29 @@ class WireItem(QGraphicsLineItem):
         self.refresh_geometry()
 
     def refresh_geometry(self):
-        """
-        Reset the wire and handles from model coordinates.
-        """
+        """Reinitialise le fil et les poignees a partir des coordonnees du modele"""
         if not self.wire.node_a or not self.wire.node_b:
             return
 
-        # Reset parent to absolute origin
+        # Reinitialise le parent a l'origine absolue
         self.prepareGeometryChange()
         self.setPos(0, 0)
 
-        # Absolute coordinates
+        # Coordonnees absolues
         p1 = QPointF(*self.wire.node_a.position)
         p2 = QPointF(*self.wire.node_b.position)
 
-        # Place elements at those coordinates
+        # Place les elements a ces coordonnees
         self.handle_a.setPos(p1)
         self.handle_b.setPos(p2)
         self.setLine(QLineF(p1, p2))
 
     def update_line_visuals(self):
-        """Update only the line between the handles."""
+        """Met a jour uniquement la ligne entre les poignees"""
         self.setLine(QLineF(self.handle_a.pos(), self.handle_b.pos()))
 
     def shape(self):
-        """Return a thicker hit area to make wire selection easier."""
+        """Retourne une zone de clic plus epaisse pour faciliter la selection du fil"""
         path = QPainterPath()
         path.moveTo(self.line().p1())
         path.lineTo(self.line().p2())
@@ -108,7 +106,7 @@ class WireItem(QGraphicsLineItem):
         return stroker.createStroke(path)
 
     def _node_shared_with_dipole(self, node, model):
-        """Return True if the node is referenced by any dipole."""
+        """Retourne True si le noeud est reference par un dipole"""
         if node is None:
             return False
         for dipole in model.dipoles.values():
@@ -117,7 +115,7 @@ class WireItem(QGraphicsLineItem):
         return False
 
     def apply_scene_delta(self, delta, detach_shared_nodes=False, moved_node_ids=None):
-        """Move a wire via its nodes, with optional endpoint snapping."""
+        """Deplace un fil via ses noeuds avec aimantation optionnelle des extremites"""
         scene = self.scene()
         if scene is None:
             return
@@ -146,14 +144,14 @@ class WireItem(QGraphicsLineItem):
         if moved_node_ids is None:
             moved_node_ids = set()
 
-        # If nodes were detached, endpoints can snap independently
-        # Otherwise, attached endpoints must be driven by moved dipoles
+        # Si les noeuds ont ete detaches, les extremites peuvent s'aimanter independamment
+        # Sinon les extremites attachees doivent etre pilotees par les dipoles deplaces
         should_snap_endpoints = detach_shared_nodes
 
         node_a_id = id(self.wire.node_a)
         if node_a_id not in moved_node_ids:
             if shared_a and not detach_shared_nodes:
-                # Keep attachment: the selected dipole updates this node
+                # Conserve l'attache : le dipole selectionne met a jour ce noeud
                 moved_node_ids.add(node_a_id)
             else:
                 ax += delta.x()
@@ -168,7 +166,7 @@ class WireItem(QGraphicsLineItem):
         node_b_id = id(self.wire.node_b)
         if node_b_id not in moved_node_ids:
             if shared_b and not detach_shared_nodes:
-                # Keep attachment, the selected dipole updates this node
+                # Conserve l'attache : le dipole selectionne met a jour ce noeud
                 moved_node_ids.add(node_b_id)
             else:
                 bx += delta.x()
@@ -183,7 +181,7 @@ class WireItem(QGraphicsLineItem):
         self.refresh_geometry()
 
     def itemChange(self, change, value):
-        # Position snapping
+        # Aimantation de position
         if change == QGraphicsItem.ItemPositionChange and self.scene():
             new_pos = value
             grid_size = self.scene().GRID_SIZE
@@ -191,9 +189,9 @@ class WireItem(QGraphicsLineItem):
             y = round(new_pos.y() / grid_size) * grid_size
             return QPointF(x, y)
 
-        # Selection visuals
+        # Visuels de selection
         if change == QGraphicsItem.ItemSelectedChange:
-            # Avoid unnecessary itemChange churn
+            # Evite les cycles itemChange inutiles
             is_selected = bool(value)
             if self.handle_a.isVisible() != is_selected:
                 self.handle_a.setVisible(is_selected)
@@ -213,10 +211,10 @@ class WireItem(QGraphicsLineItem):
         return super().itemChange(change, value)
 
     def mouseReleaseEvent(self, event):
-        """Finalize a full-wire drag."""
+        """Finalise le glisser d'un fil entier"""
         super().mouseReleaseEvent(event)
         
-        # If the whole wire moved
+        # Si le fil entier a ete deplace
         if self.pos().manhattanLength() > 0.1:
              if self.scene():
                  self.scene().handle_wire_move(self)

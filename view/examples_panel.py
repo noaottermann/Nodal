@@ -1,1 +1,1 @@
-"""Examples panel placeholders."""
+"""Emplacements pour le panneau d'exemples"""

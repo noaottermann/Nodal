@@ -1,1 +1,1 @@
-"""Circuit controller placeholders."""
+"""Emplacements pour le controleur de circuit"""

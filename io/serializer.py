@@ -1,1 +1,1 @@
-"""Serialization helpers for circuit models."""
+"""Utilitaires de serialisation pour les modeles de circuit"""
