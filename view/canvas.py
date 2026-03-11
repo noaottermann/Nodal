@@ -479,6 +479,12 @@ class CircuitScene(QGraphicsScene):
             self._suppress_move_until_release = False
             return False
         if isinstance(item, ComponentItem):
+            if item.isSelected() and not (event.modifiers() & (Qt.ShiftModifier | Qt.ControlModifier)):
+                # Keep current selection and avoid starting rubber-band selection.
+                self._drag_started_on_item = True
+                self._suppress_move_until_release = False
+                event.accept()
+                return True
             self._drag_started_on_item = True
             self._suppress_move_until_release = False
             return False
