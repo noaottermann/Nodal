@@ -146,14 +146,14 @@ class WireItem(QGraphicsLineItem):
         if moved_node_ids is None:
             moved_node_ids = set()
 
-        # If nodes were detached, endpoints can snap independently.
-        # Otherwise, attached endpoints must be driven by moved dipoles.
+        # If nodes were detached, endpoints can snap independently
+        # Otherwise, attached endpoints must be driven by moved dipoles
         should_snap_endpoints = detach_shared_nodes
 
         node_a_id = id(self.wire.node_a)
         if node_a_id not in moved_node_ids:
             if shared_a and not detach_shared_nodes:
-                # Keep attachment: the selected dipole updates this node.
+                # Keep attachment: the selected dipole updates this node
                 moved_node_ids.add(node_a_id)
             else:
                 ax += delta.x()
@@ -168,7 +168,7 @@ class WireItem(QGraphicsLineItem):
         node_b_id = id(self.wire.node_b)
         if node_b_id not in moved_node_ids:
             if shared_b and not detach_shared_nodes:
-                # Keep attachment: the selected dipole updates this node.
+                # Keep attachment, the selected dipole updates this node
                 moved_node_ids.add(node_b_id)
             else:
                 bx += delta.x()

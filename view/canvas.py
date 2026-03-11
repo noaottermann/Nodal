@@ -249,7 +249,7 @@ class CircuitScene(QGraphicsScene):
         snapshot = self.model.to_json()
         if self._undo_stack and self._undo_stack[-1] == snapshot:
             return
-        # New user edits invalidate redo history.
+        # New user edits invalidate redo history
         self._redo_stack.clear()
         self._undo_stack.append(snapshot)
         if len(self._undo_stack) > self._max_undo_steps:
@@ -571,6 +571,9 @@ class CircuitScene(QGraphicsScene):
         """
         # Update node coordinates
         component_item.update_model_nodes()
+
+        # Smart snap: connect moved dipole terminals to nearby dipole terminals
+        self._smart_connect_component_to_nearby_dipole_nodes(component_item)
         
         # Collect node IDs for the moved component
         node_ids = {component_item.component.node_a.id, component_item.component.node_b.id}
@@ -581,6 +584,144 @@ class CircuitScene(QGraphicsScene):
                 wire = item.wire
                 if wire.node_a.id in node_ids or wire.node_b.id in node_ids:
                     item.refresh_geometry()
+
+    def _smart_connect_component_to_nearby_dipole_nodes(self, component_item):
+        """Snap and connect a moved dipole to nearby dipole nodes."""
+        component_model = component_item.component
+        threshold = 15
+
+        # Pick the best anchor to nearby external dipole node
+        ax, ay = component_model.node_a.position
+        bx, by = component_model.node_b.position
+        candidate_a = self._find_nearest_external_dipole_node(component_model, ax, ay, threshold)
+        candidate_b = self._find_nearest_external_dipole_node(component_model, bx, by, threshold)
+
+        best = None
+        if candidate_a and candidate_b:
+            best = ("a", candidate_a[0]) if candidate_a[1] <= candidate_b[1] else ("b", candidate_b[0])
+        elif candidate_a:
+            best = ("a", candidate_a[0])
+        elif candidate_b:
+            best = ("b", candidate_b[0])
+
+        if best is not None:
+            terminal, target_node = best
+            self._snap_component_terminal_to_node(component_item, terminal, target_node)
+            component_item.update_model_nodes()
+
+        # Re-evaluate and attach both terminals where applicable
+        used_target_nodes = set()
+        for terminal in ("a", "b"):
+            if terminal == "a":
+                tx, ty = component_model.node_a.position
+            else:
+                tx, ty = component_model.node_b.position
+
+            candidate = self._find_nearest_external_dipole_node(component_model, tx, ty, threshold)
+            if candidate is None:
+                continue
+
+            target_node = candidate[0]
+            if target_node in used_target_nodes:
+                continue
+
+            if terminal == "a" and component_model.node_b is target_node:
+                continue
+            if terminal == "b" and component_model.node_a is target_node:
+                continue
+
+            if terminal == "a":
+                self._reattach_component_terminal_node(component_model, "node_a", target_node)
+            else:
+                self._reattach_component_terminal_node(component_model, "node_b", target_node)
+
+            used_target_nodes.add(target_node)
+
+        # Refresh all wire items touching this dipole after possible node reattachments
+        node_ids = {component_model.node_a.id, component_model.node_b.id}
+        for item in self.items():
+            if isinstance(item, WireItem):
+                wire = item.wire
+                if wire.node_a.id in node_ids or wire.node_b.id in node_ids:
+                    item.refresh_geometry()
+
+    def _find_nearest_external_dipole_node(self, component_model, x, y, threshold):
+        """Return (node, distance) for closest node from another dipole within threshold."""
+        nearest_node = None
+        nearest_dist = None
+
+        for dipole in self.model.dipoles.values():
+            if dipole is component_model:
+                continue
+            for node in (dipole.node_a, dipole.node_b):
+                if node is None:
+                    continue
+                nx, ny = node.position
+                dist = ((x - nx) ** 2 + (y - ny) ** 2) ** 0.5
+                if dist > threshold:
+                    continue
+                if nearest_dist is None or dist < nearest_dist:
+                    nearest_node = node
+                    nearest_dist = dist
+
+        if nearest_node is None:
+            return None
+        return nearest_node, nearest_dist
+
+    def _snap_component_terminal_to_node(self, component_item, terminal, target_node):
+        """Move component so the given terminal lands exactly on the target node."""
+        offset = 30
+        rotation = math.radians(component_item.rotation())
+        dx = offset * math.cos(rotation)
+        dy = offset * math.sin(rotation)
+        tx, ty = target_node.position
+
+        if terminal == "a":
+            cx = tx + dx
+            cy = ty + dy
+        else:
+            cx = tx - dx
+            cy = ty - dy
+
+        component_item.setPos(QPointF(cx, cy))
+
+    def _reattach_component_terminal_node(self, component_model, attr_name, target_node):
+        """Attach component terminal to target node and migrate wire references."""
+        old_node = getattr(component_model, attr_name)
+        if old_node is target_node:
+            return
+
+        if old_node is not None:
+            old_node.remove_connection(component_model)
+
+        setattr(component_model, attr_name, target_node)
+        target_node.add_connection(component_model)
+
+        # Keep existing wires connected to this terminal by migrating old-node refs
+        for wire in self.model.wires.values():
+            if wire.node_a is old_node:
+                wire.node_a = target_node
+            if wire.node_b is old_node:
+                wire.node_b = target_node
+
+        self._remove_node_if_unused(old_node)
+
+    def _remove_node_if_unused(self, node):
+        if node is None:
+            return
+        if node.id not in self.model.nodes:
+            return
+
+        used_by_dipole = any(
+            dipole.node_a is node or dipole.node_b is node
+            for dipole in self.model.dipoles.values()
+        )
+        used_by_wire = any(
+            wire.node_a is node or wire.node_b is node
+            for wire in self.model.wires.values()
+        )
+        if not used_by_dipole and not used_by_wire:
+            self.model.remove_node(node.id)
 
     def start_wire_drawing(self, x, y):
         """Start interactive wire drawing."""
@@ -607,7 +748,7 @@ class CircuitScene(QGraphicsScene):
         if start_x == x and start_y == y:
             return
 
-        # Register wire creation as its own undoable action.
+        # Register wire creation as its own undoable action
         self._push_undo_snapshot()
 
         # Find or create the start node

@@ -69,7 +69,7 @@ class MainWindow(QMainWindow):
         central_layout.addWidget(self.view, 1)
         self.setCentralWidget(central_widget)
 
-        # Anchor toolbar to the central area so its geometry follows panel/view sizes.
+        # Anchor toolbar to the central area so its geometry follows panel/view sizes
         if hasattr(self, "toolbar"):
             self.toolbar.setParent(central_widget)
             self.toolbar.show()
